@@ -217,12 +217,12 @@
         <div><label>Time</label><input type="time" id="fixTime"></div>
       </div>
       <div class="row2">
-        <div><label>Team 1</label><input type="text" id="fixTeam1" placeholder="e.g. Blue Bulls"></div>
-        <div><label>Team 2</label><input type="text" id="fixTeam2" placeholder="e.g. Western Province"></div>
+        <div><label>Team 1</label><input type="text" id="fixTeam1" placeholder="e.g. Unika"></div>
+        <div><label>Team 2</label><input type="text" id="fixTeam2" placeholder="e.g. Affies"></div>
       </div>
       <div class="row2">
-        <div><label>Venue</label><input type="text" id="fixVenue" placeholder="e.g. Loftus Versfeld"></div>
-        <div><label>Competition</label><input type="text" id="fixComp" placeholder="e.g. Currie Cup"></div>
+        <div><label>Venue</label><input type="text" id="fixVenue" placeholder="e.g. Unika Sportsgronde"></div>
+        <div><label>Competition</label><input type="text" id="fixComp" placeholder="e.g. U16 League"></div>
       </div>
       <label>Referee</label>
       <select id="fixRefSelect"></select>
@@ -245,7 +245,7 @@
           <div><label>Grade</label><input type="text" id="newRefGrade" placeholder="e.g. Level 2"></div>
         </div>
         <label>Club / Association</label>
-        <input type="text" id="newRefClub" placeholder="e.g. Western Province Rugby Referees Society">
+        <input type="text" id="newRefClub" placeholder="e.g. Unika Rugby">
         <button class="primary" id="addRefBtn">Add Referee</button>
       </div>
       <div class="panel">
@@ -286,13 +286,14 @@
 <script>
 /* ===================== FIREBASE CONFIG ===================== */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAh-3vKipYPtgjnoEbbfkglSFS8y_L7Q0k",
+  authDomain: "referee-b0fa2.firebaseapp.com",
+  databaseURL: "https://referee-b0fa2-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "referee-b0fa2",
+  storageBucket: "referee-b0fa2.firebasestorage.app",
+  messagingSenderId: "431577133957",
+  appId: "1:431577133957:web:8d06143cd412adb1d74aec",
+  measurementId: "G-6RBN2S0WLS"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
