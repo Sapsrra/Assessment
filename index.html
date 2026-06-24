@@ -85,7 +85,7 @@
   .summary-grid .sbox .slabel{font-size:.62rem;color:var(--text-dim);text-transform:uppercase;}
   .match-card{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer;}
   .match-card:hover{border-color:var(--accent);}
-  .match-card .mline{display:flex;justify-content:space-between;font-size:.78rem;color:var(--text-dim);}
+  .match-card mline{display:flex;justify-content:space-between;font-size:.78rem;color:var(--text-dim);}
 
   /* Active match banner */
   .active-match{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
@@ -286,13 +286,14 @@
 <script>
 /* ===================== FIREBASE CONFIG ===================== */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAh-3vKipYPtgjnoEbbfkglSFS8y_L7Q0k",
+  authDomain: "referee-b0fa2.firebaseapp.com",
+  databaseURL: "https://referee-b0fa2-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "referee-b0fa2",
+  storageBucket: "referee-b0fa2.firebasestorage.app",
+  messagingSenderId: "431577133957",
+  appId: "1:431577133957:web:8d06143cd412adb1d74aec",
+  measurementId: "G-6RBN2S0WLS"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
