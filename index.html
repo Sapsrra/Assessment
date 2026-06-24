@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -159,7 +158,6 @@
 
 <main>
 
-  <!-- MATCH NOTATION TAB -->
   <section id="tab-notation" class="tab-content">
     <div class="panel">
       <h2>Active Match</h2>
@@ -211,7 +209,6 @@
     </div>
   </section>
 
-  <!-- SCHEDULE TAB -->
   <section id="tab-schedule" class="tab-content" style="display:none;">
     <div class="panel">
       <h2>Schedule a Game</h2>
@@ -239,7 +236,6 @@
     <div id="fixtureGroups"></div>
   </section>
 
-  <!-- REFEREES TAB -->
   <section id="tab-referees" class="tab-content" style="display:none;">
     <div id="refereesListView">
       <div class="panel">
@@ -268,7 +264,6 @@
     </div>
   </section>
 
-  <!-- DASHBOARD TAB -->
   <section id="tab-dashboard" class="tab-content" style="display:none;">
     <div class="panel">
       <h2>Leaderboard</h2>
@@ -290,16 +285,13 @@
 
 <script>
 /* ===================== FIREBASE CONFIG ===================== */
-/* Realtime Database (not Firestore) — paste your project config below.
-   Make sure Realtime Database is enabled in the Firebase console
-   (Build > Realtime Database > Create Database), and that its rules
-   allow read/write for your use case. */
+/* Realtime Database (not Firestore) configured for Europe West Region */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
+  authDomain: "referee-b0fa2.firebaseapp.com",
+  databaseURL: "https://referee-b0fa2-default-rtdb.europe-west1.firebasedatabase.app/",
+  projectId: "referee-b0fa2",
+  storageBucket: "referee-b0fa2.appspot.com",
   messagingSenderId: "YOUR_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
