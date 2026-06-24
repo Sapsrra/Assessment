@@ -217,11 +217,11 @@
         <div><label>Time</label><input type="time" id="fixTime"></div>
       </div>
       <div class="row2">
-        <div><label>Team 1</label><input type="text" id="fixTeam1" placeholder="e.g. Unika"></div>
+        <div><label>Team 1</label><input type="text" id="fixTeam1" placeholder="e.g. Provincial Team A"></div>
         <div><label>Team 2</label><input type="text" id="fixTeam2" placeholder="e.g. Affies"></div>
       </div>
       <div class="row2">
-        <div><label>Venue</label><input type="text" id="fixVenue" placeholder="e.g. Unika Sportsgronde"></div>
+        <div><label>Venue</label><input type="text" id="fixVenue" placeholder="e.g. Provincial Stadium"></div>
         <div><label>Competition</label><input type="text" id="fixComp" placeholder="e.g. U16 League"></div>
       </div>
       <label>Referee</label>
@@ -245,7 +245,7 @@
           <div><label>Grade</label><input type="text" id="newRefGrade" placeholder="e.g. Level 2"></div>
         </div>
         <label>Club / Association</label>
-        <input type="text" id="newRefClub" placeholder="e.g. Unika Rugby">
+        <input type="text" id="newRefClub" placeholder="e.g. Provincial Rugby">
         <button class="primary" id="addRefBtn">Add Referee</button>
       </div>
       <div class="panel">
@@ -285,15 +285,16 @@
 
 <script>
 /* ===================== FIREBASE CONFIG ===================== */
+/* Paste your actual project credentials below. Data will not remain saved permanently if 
+   the default placeholders are kept or if your Firebase Database Rules are in Locked Mode. */
 const firebaseConfig = {
-  apiKey: "AIzaSyAh-3vKipYPtgjnoEbbfkglSFS8y_L7Q0k",
-  authDomain: "referee-b0fa2.firebaseapp.com",
-  databaseURL: "https://referee-b0fa2-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "referee-b0fa2",
-  storageBucket: "referee-b0fa2.firebasestorage.app",
-  messagingSenderId: "431577133957",
-  appId: "1:431577133957:web:8d06143cd412adb1d74aec",
-  measurementId: "G-6RBN2S0WLS"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
@@ -637,7 +638,10 @@ document.getElementById("submitEvalBtn").addEventListener("click", () => {
     renderActiveMatchBanner();
     resetTimerState();
     buildCriteriaInputs();
-  }).catch(err => showToast("Error: " + err.message));
+  }).catch(err => {
+    showToast("Database Error: " + err.message);
+    console.error(err);
+  });
 });
 
 /* ===================== SCHEDULE / FIXTURES ===================== */
@@ -652,6 +656,7 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
   if (!team1 || !team2){ showToast("Enter both team names"); return; }
   if (!refId){ showToast("Select a referee"); return; }
   if (!evaluatorName){ showToast("Enter the evaluator's name"); return; }
+  
   fixturesRef.push({
     date, time: document.getElementById("fixTime").value || "",
     team1, team2, venue: document.getElementById("fixVenue").value.trim(),
@@ -663,6 +668,9 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
     ["fixDate","fixTime","fixTeam1","fixTeam2","fixVenue","fixComp","fixEvaluator"].forEach(id => document.getElementById(id).value = "");
     document.getElementById("fixHalfLength").value = 35;
     showToast("Game scheduled");
+  }).catch(err => {
+    showToast("Database Error: " + err.message);
+    console.error(err);
   });
 });
 
@@ -710,12 +718,12 @@ function startAssessmentFromFixture(fixId){
   renderActiveMatchBanner();
   updateTimerDisplay();
   document.getElementById("startPauseBtn").disabled = false;
-  fixturesRef.child(fixId).update({status:"live"});
+  fixturesRef.child(fixId).update({status:"live"}).catch(err => console.error(err));
   showToast("Match loaded — start the timer when ready");
 }
 function deleteFixture(fixId){
   if (!confirm("Delete this scheduled game?")) return;
-  fixturesRef.child(fixId).remove().then(() => showToast("Fixture deleted"));
+  fixturesRef.child(fixId).remove().then(() => showToast("Fixture deleted")).catch(err => showToast("Error: " + err.message));
 }
 
 /* ===================== REFEREES ===================== */
@@ -724,11 +732,15 @@ document.getElementById("addRefBtn").addEventListener("click", () => {
   if (!name){ showToast("Enter a name"); return; }
   const grade = document.getElementById("newRefGrade").value.trim();
   const club = document.getElementById("newRefClub").value.trim();
+  
   refereesRef.push({name, grade, club, active:true, createdAt:Date.now()}).then(() => {
     document.getElementById("newRefName").value = "";
     document.getElementById("newRefGrade").value = "";
     document.getElementById("newRefClub").value = "";
     showToast("Referee added");
+  }).catch(err => {
+    showToast("Database Error: " + err.message);
+    console.error(err);
   });
 });
 function showRefereesList(){
@@ -788,11 +800,11 @@ function showRefereeProfile(refId){
     bars.appendChild(row);
   });
   document.getElementById("toggleActiveBtn").addEventListener("click", () => {
-    refereesRef.child(refId).update({active: r.active===false ? true : false}).then(()=>showRefereeProfile(refId));
+    refereesRef.child(refId).update({active: r.active===false ? true : false}).then(()=>showRefereeProfile(refId)).catch(err => showToast(err.message));
   });
   document.getElementById("deleteRefBtn").addEventListener("click", () => {
     if (confirm(`Delete ${r.name}? Past match assessments are kept but unlinked.`)){
-      refereesRef.child(refId).remove().then(()=>{ showToast("Referee deleted"); showRefereesList(); });
+      refereesRef.child(refId).remove().then(()=>{ showToast("Referee deleted"); showRefereesList(); }).catch(err => showToast(err.message));
     }
   });
 
