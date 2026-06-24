@@ -188,7 +188,6 @@
 
       <div class="reason-picker" id="reasonPicker" style="display:none;">
         <div class="reason-picker-title" id="reasonPickerTitle">Reason</div>
-        <div id="reasonTeamContainer"></div>
         <div class="reason-grid" id="reasonGrid"></div>
         <button class="secondary small" id="reasonCancelBtn" style="width:100%;margin-top:6px;">Cancel</button>
       </div>
@@ -286,14 +285,19 @@
 
 <script>
 /* ===================== FIREBASE CONFIG ===================== */
+/* Realtime Database (not Firestore) — paste your project config below.
+   Make sure Realtime Database is enabled in the Firebase console
+   (Build > Realtime Database > Create Database), and that its rules
+   allow read/write for your use case. */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAh-3vKipYPtgjnoEbbfkglSFS8y_L7Q0k",
+  authDomain: "referee-b0fa2.firebaseapp.com",
+  databaseURL: "https://referee-b0fa2-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "referee-b0fa2",
+  storageBucket: "referee-b0fa2.firebasestorage.app",
+  messagingSenderId: "431577133957",
+  appId: "1:431577133957:web:8d06143cd412adb1d74aec",
+  measurementId: "G-6RBN2S0WLS"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
@@ -323,7 +327,6 @@ let evaluations = {};
 let fixtures = {};
 let currentScores = {};
 let currentFixture = null;
-let selectedReasonTeam = "";
 
 function teamsLabel(o){
   if (!o) return "";
@@ -471,7 +474,6 @@ function endGame(){
   document.getElementById("endGameBtn").disabled = true;
   document.getElementById("startHalf2Btn").style.display = "none";
   document.getElementById("reasonPicker").style.display = "none";
-  selectedReasonTeam = "";
   setEventButtonsEnabled(false);
   renderFinalStats();
   document.getElementById("postGamePanel").style.display = "block";
@@ -493,61 +495,14 @@ Object.keys(EVENT_BTN_MAP).forEach(id => {
 
 function openReasonPicker(type){
   const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
-  document.getElementById("reasonPickerTitle").textContent = `${type} — Select Team & Reason`;
-  
-  const t1 = currentFixture?.team1 || "Team 1";
-  const t2 = currentFixture?.team2 || "Team 2";
-  selectedReasonTeam = "";
-
-  const teamContainer = document.getElementById("reasonTeamContainer");
-  teamContainer.innerHTML = `
-    <label style="text-align:center;margin-bottom:4px;">Against Which Team?</label>
-    <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <button type="button" id="pickerTeam1Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
-      <button type="button" id="pickerTeam2Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
-    </div>
-  `;
-  
-  const btn1 = document.getElementById("pickerTeam1Btn");
-  const btn2 = document.getElementById("pickerTeam2Btn");
-  btn1.textContent = t1;
-  btn2.textContent = t2;
-  
-  btn1.addEventListener("click", () => selectPickerTeam(t1, btn1, btn2));
-  btn2.addEventListener("click", () => selectPickerTeam(t2, btn2, btn1));
-
-  const grid = document.getElementById("reasonGrid");
-  grid.innerHTML = "";
-  reasons.forEach(r => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = r;
-    btn.addEventListener("click", () => {
-      if (!selectedReasonTeam) {
-        showToast("Please select a team first!");
-        return;
-      }
-      logEvent(type, r);
-    });
-    grid.appendChild(btn);
-  });
-
+  document.getElementById("reasonPickerTitle").textContent = `${type} — Reason`;
+  document.getElementById("reasonGrid").innerHTML = reasons.map(r =>
+    `<button onclick="logEvent('${type}','${r}')">${esc(r)}</button>`
+  ).join("");
   document.getElementById("reasonPicker").style.display = "block";
   document.getElementById("reasonPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
 }
-
-function selectPickerTeam(teamName, activeBtn, inactiveBtn) {
-  selectedReasonTeam = teamName;
-  inactiveBtn.style.borderColor = "var(--border)";
-  inactiveBtn.style.background = "var(--panel-2)";
-  inactiveBtn.style.color = "var(--text)";
-  activeBtn.style.borderColor = "var(--accent)";
-  activeBtn.style.background = "var(--panel)";
-  activeBtn.style.color = "var(--accent)";
-}
-
 document.getElementById("reasonCancelBtn").addEventListener("click", () => {
-  selectedReasonTeam = "";
   document.getElementById("reasonPicker").style.display = "none";
 });
 
@@ -555,9 +510,8 @@ function logEvent(type, reason){
   evtCounter++;
   timelineEvents.push({
     id: evtCounter, half: currentHalf, time: timerSeconds, type, reason: reason || "",
-    team: selectedReasonTeam || "", reset: false, error: false, nd: false, hid: false, comment: ""
+    team: "", reset: false, error: false, nd: false, hid: false, comment: ""
   });
-  selectedReasonTeam = "";
   document.getElementById("reasonPicker").style.display = "none";
   renderTimeline();
 }
@@ -632,7 +586,6 @@ function resetTimerState(){
   clearInterval(timerInterval);
   timerSeconds = 0; timerRunning = false; currentHalf = 1; half1Duration = 0; half2Duration = 0;
   matchEnded = false; timelineEvents = []; evtCounter = 0; halfLengthMinutes = 35;
-  selectedReasonTeam = "";
   document.getElementById("halfBadge").textContent = "Half 1";
   document.getElementById("startPauseBtn").textContent = "Start";
   document.getElementById("startPauseBtn").disabled = !activeFixtureId;
