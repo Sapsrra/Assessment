@@ -211,18 +211,18 @@
 
   <section id="tab-schedule" class="tab-content" style="display:none;">
     <div class="panel">
-      <h2>Schedule a Game</h2>
+      <h2 id="scheduleFormTitle">Schedule a Game</h2>
       <div class="row2">
         <div><label>Date</label><input type="date" id="fixDate"></div>
         <div><label>Time</label><input type="time" id="fixTime"></div>
       </div>
       <div class="row2">
-        <div><label>Team 1</label><input type="text" id="fixTeam1" placeholder="e.g. Provincial Team A"></div>
-        <div><label>Team 2</label><input type="text" id="fixTeam2" placeholder="e.g. Affies"></div>
+        <div><label>Team 1</label><input type="text" id="fixTeam1" placeholder="e.g. Blue Bulls"></div>
+        <div><label>Team 2</label><input type="text" id="fixTeam2" placeholder="e.g. Golden Lions"></div>
       </div>
       <div class="row2">
-        <div><label>Venue</label><input type="text" id="fixVenue" placeholder="e.g. Provincial Stadium"></div>
-        <div><label>Competition</label><input type="text" id="fixComp" placeholder="e.g. U16 League"></div>
+        <div><label>Venue</label><input type="text" id="fixVenue" placeholder="e.g. Loftus Versfeld"></div>
+        <div><label>Competition</label><input type="text" id="fixComp" placeholder="e.g. Currie Cup Premier Div"></div>
       </div>
       <label>Referee</label>
       <select id="fixRefSelect"></select>
@@ -230,7 +230,10 @@
       <input type="text" id="fixEvaluator" placeholder="Your name">
       <label>Half Length (minutes)</label>
       <input type="number" id="fixHalfLength" value="35" min="1">
-      <button class="primary" id="addFixtureBtn">Schedule Game</button>
+      <div class="btnrow" style="margin-top:14px;">
+        <button class="primary" id="addFixtureBtn">Schedule Game</button>
+        <button class="secondary" id="cancelEditFixtureBtn" style="display:none;">Cancel Edit</button>
+      </div>
     </div>
 
     <div id="fixtureGroups"></div>
@@ -242,10 +245,10 @@
         <h2>Add Referee</h2>
         <div class="row2">
           <div><label>Name</label><input type="text" id="newRefName" placeholder="Full name"></div>
-          <div><label>Grade</label><input type="text" id="newRefGrade" placeholder="e.g. Level 2"></div>
+          <div><label>Grade</label><input type="text" id="newRefGrade" placeholder="e.g. National Panel"></div>
         </div>
         <label>Club / Association</label>
-        <input type="text" id="newRefClub" placeholder="e.g. Provincial Rugby">
+        <input type="text" id="newRefClub" placeholder="e.g. Blue Bulls Referees Society">
         <button class="primary" id="addRefBtn">Add Referee</button>
       </div>
       <div class="panel">
@@ -285,8 +288,6 @@
 
 <script>
 /* ===================== FIREBASE CONFIG ===================== */
-/* Paste your actual project credentials below. Data will not remain saved permanently if 
-   the default placeholders are kept or if your Firebase Database Rules are in Locked Mode. */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -324,6 +325,7 @@ let evaluations = {};
 let fixtures = {};
 let currentScores = {};
 let currentFixture = null;
+let editingFixtureId = null;
 
 function teamsLabel(o){
   if (!o) return "";
@@ -477,9 +479,11 @@ function endGame(){
   document.getElementById("postGamePanel").scrollIntoView({behavior:"smooth"});
 }
 
-function setEventButtonsEnabled(on){
+function toggleEventButtons(on){
   ["btnPenalty","btnFreeKick","btnScrum","btnLineout"].forEach(id => document.getElementById(id).disabled = !on || matchEnded);
 }
+/* Aligned wrapper naming alias */
+function setEventButtonsEnabled(on){ toggleEventButtons(on); }
 
 const EVENT_BTN_MAP = {btnPenalty:"Penalty", btnFreeKick:"Free Kick", btnScrum:"Scrum", btnLineout:"Line-out"};
 Object.keys(EVENT_BTN_MAP).forEach(id => {
@@ -638,13 +642,21 @@ document.getElementById("submitEvalBtn").addEventListener("click", () => {
     renderActiveMatchBanner();
     resetTimerState();
     buildCriteriaInputs();
-  }).catch(err => {
-    showToast("Database Error: " + err.message);
-    console.error(err);
-  });
+  }).catch(err => showToast("Error: " + err.message));
 });
 
 /* ===================== SCHEDULE / FIXTURES ===================== */
+function resetScheduleForm(){
+  editingFixtureId = null;
+  document.getElementById("scheduleFormTitle").textContent = "Schedule a Game";
+  document.getElementById("addFixtureBtn").textContent = "Schedule Game";
+  document.getElementById("cancelEditFixtureBtn").style.display = "none";
+  ["fixDate","fixTime","fixTeam1","fixTeam2","fixVenue","fixComp","fixEvaluator"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("fixHalfLength").value = 35;
+}
+
+document.getElementById("cancelEditFixtureBtn").addEventListener("click", resetScheduleForm);
+
 document.getElementById("addFixtureBtn").addEventListener("click", () => {
   const date = document.getElementById("fixDate").value;
   const team1 = document.getElementById("fixTeam1").value.trim();
@@ -656,22 +668,29 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
   if (!team1 || !team2){ showToast("Enter both team names"); return; }
   if (!refId){ showToast("Select a referee"); return; }
   if (!evaluatorName){ showToast("Enter the evaluator's name"); return; }
-  
-  fixturesRef.push({
+
+  const dataPayload = {
     date, time: document.getElementById("fixTime").value || "",
     team1, team2, venue: document.getElementById("fixVenue").value.trim(),
     competition: document.getElementById("fixComp").value.trim(),
     refereeId: refId, refereeName: referees[refId]?.name || "",
-    evaluatorName, halfLength,
-    status: "upcoming", evaluationId: null, createdAt: Date.now()
-  }).then(() => {
-    ["fixDate","fixTime","fixTeam1","fixTeam2","fixVenue","fixComp","fixEvaluator"].forEach(id => document.getElementById(id).value = "");
-    document.getElementById("fixHalfLength").value = 35;
-    showToast("Game scheduled");
-  }).catch(err => {
-    showToast("Database Error: " + err.message);
-    console.error(err);
-  });
+    evaluatorName, halfLength
+  };
+
+  if (editingFixtureId) {
+    fixturesRef.child(editingFixtureId).update(dataPayload).then(() => {
+      showToast("Game updated");
+      resetScheduleForm();
+    });
+  } else {
+    fixturesRef.push({
+      ...dataPayload,
+      status: "upcoming", evaluationId: null, createdAt: Date.now()
+    }).then(() => {
+      resetScheduleForm();
+      showToast("Game scheduled");
+    });
+  }
 });
 
 function fixtureGroup(f){
@@ -700,6 +719,7 @@ function renderFixtureGroups(){
             <div class="fline"><span>Evaluator: ${esc(f.evaluatorName||"")} · Half: ${f.halfLength||35} min</span></div>
             <div class="fixture-actions">
               ${f.status !== "completed" ? `<button class="secondary small" onclick="startAssessmentFromFixture('${f.id}')">${f.status==="live"?"Continue Assessment":"Start Assessment"}</button>` : ""}
+              ${f.status !== "completed" ? `<button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>` : ""}
               <button class="secondary small danger" onclick="deleteFixture('${f.id}')">Delete</button>
             </div>
           </div>
@@ -707,6 +727,25 @@ function renderFixtureGroups(){
       </div>
     </details>
   `).join("");
+}
+function editFixture(fixId){
+  const f = fixtures[fixId]; if (!f) return;
+  editingFixtureId = fixId;
+  document.getElementById("scheduleFormTitle").textContent = "Edit Scheduled Game";
+  document.getElementById("addFixtureBtn").textContent = "Save Changes";
+  document.getElementById("cancelEditFixtureBtn").style.display = "block";
+  
+  document.getElementById("fixDate").value = f.date || "";
+  document.getElementById("fixTime").value = f.time || "";
+  document.getElementById("fixTeam1").value = f.team1 || "";
+  document.getElementById("fixTeam2").value = f.team2 || "";
+  document.getElementById("fixVenue").value = f.venue || "";
+  document.getElementById("fixComp").value = f.competition || "";
+  document.getElementById("fixRefSelect").value = f.refereeId || "";
+  document.getElementById("fixEvaluator").value = f.evaluatorName || "";
+  document.getElementById("fixHalfLength").value = f.halfLength || 35;
+
+  document.getElementById("tab-schedule").querySelector(".panel").scrollIntoView({behavior:"smooth"});
 }
 function startAssessmentFromFixture(fixId){
   const f = fixtures[fixId]; if (!f) return;
@@ -718,12 +757,15 @@ function startAssessmentFromFixture(fixId){
   renderActiveMatchBanner();
   updateTimerDisplay();
   document.getElementById("startPauseBtn").disabled = false;
-  fixturesRef.child(fixId).update({status:"live"}).catch(err => console.error(err));
+  fixturesRef.child(fixId).update({status:"live"});
   showToast("Match loaded — start the timer when ready");
 }
 function deleteFixture(fixId){
   if (!confirm("Delete this scheduled game?")) return;
-  fixturesRef.child(fixId).remove().then(() => showToast("Fixture deleted")).catch(err => showToast("Error: " + err.message));
+  fixturesRef.child(fixId).remove().then(() => {
+    if(editingFixtureId === fixId) resetScheduleForm();
+    showToast("Fixture deleted");
+  });
 }
 
 /* ===================== REFEREES ===================== */
@@ -732,15 +774,11 @@ document.getElementById("addRefBtn").addEventListener("click", () => {
   if (!name){ showToast("Enter a name"); return; }
   const grade = document.getElementById("newRefGrade").value.trim();
   const club = document.getElementById("newRefClub").value.trim();
-  
   refereesRef.push({name, grade, club, active:true, createdAt:Date.now()}).then(() => {
     document.getElementById("newRefName").value = "";
     document.getElementById("newRefGrade").value = "";
     document.getElementById("newRefClub").value = "";
     showToast("Referee added");
-  }).catch(err => {
-    showToast("Database Error: " + err.message);
-    console.error(err);
   });
 });
 function showRefereesList(){
@@ -787,6 +825,7 @@ function showRefereeProfile(refId){
     <div class="overall-box"><span>Average Score (${stats.count} match${stats.count===1?"":"es"})</span><span class="num">${stats.count?stats.avg.toFixed(1):"—"}</span></div>
     <div id="profileBars" style="margin:14px 0;"></div>
     <div class="btnrow">
+      <button class="secondary" id="editRefBtn">Edit Info</button>
       <button class="secondary" id="toggleActiveBtn">${r.active===false?"Mark Active":"Mark Inactive"}</button>
       <button class="secondary danger" id="deleteRefBtn">Delete Referee</button>
     </div>
@@ -799,12 +838,13 @@ function showRefereeProfile(refId){
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>`;
     bars.appendChild(row);
   });
+  document.getElementById("editRefBtn").addEventListener("click", () => showRefereeProfileEdit(refId));
   document.getElementById("toggleActiveBtn").addEventListener("click", () => {
-    refereesRef.child(refId).update({active: r.active===false ? true : false}).then(()=>showRefereeProfile(refId)).catch(err => showToast(err.message));
+    refereesRef.child(refId).update({active: r.active===false ? true : false}).then(()=>showRefereeProfile(refId));
   });
   document.getElementById("deleteRefBtn").addEventListener("click", () => {
     if (confirm(`Delete ${r.name}? Past match assessments are kept but unlinked.`)){
-      refereesRef.child(refId).remove().then(()=>{ showToast("Referee deleted"); showRefereesList(); }).catch(err => showToast(err.message));
+      refereesRef.child(refId).remove().then(()=>{ showToast("Referee deleted"); showRefereesList(); });
     }
   });
 
@@ -818,6 +858,35 @@ function showRefereeProfile(refId){
     </div>
   `).join("");
   hist.querySelectorAll(".match-card").forEach(card => card.addEventListener("click", () => showMatchDetail(card.dataset.id)));
+}
+
+function showRefereeProfileEdit(refId) {
+  const r = referees[refId]; if (!r) return;
+  const panel = document.getElementById("profilePanel");
+  panel.innerHTML = `
+    <h2>Edit Referee Details</h2>
+    <label>Name</label><input type="text" id="editRefName" value="${esc(r.name)}">
+    <label>Grade</label><input type="text" id="editRefGrade" value="${esc(r.grade||"")}">
+    <label>Club / Association</label><input type="text" id="editRefClub" value="${esc(r.club||"")}">
+    <div class="btnrow" style="margin-top:14px;">
+      <button class="primary" id="saveRefBtn">Save Changes</button>
+      <button class="secondary" id="cancelEditRefBtn">Cancel</button>
+    </div>
+  `;
+  document.getElementById("saveRefBtn").addEventListener("click", () => {
+    const name = document.getElementById("editRefName").value.trim();
+    if (!name) { showToast("Enter a name"); return; }
+    const grade = document.getElementById("editRefGrade").value.trim();
+    const club = document.getElementById("editRefClub").value.trim();
+    
+    refereesRef.child(refId).update({ name, grade, club }).then(() => {
+      showToast("Referee details updated");
+      showRefereeProfile(refId);
+    });
+  });
+  document.getElementById("cancelEditRefBtn").addEventListener("click", () => {
+    showRefereeProfile(refId);
+  });
 }
 
 function showMatchDetail(evalId){
