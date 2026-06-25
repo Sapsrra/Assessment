@@ -868,23 +868,7 @@ function editFixture(fixId){
 }
 
 function deleteFixture(fixId){
-  if (!confirm("Delete this scheduled game? This will also remove its evaluation from the referee profile and dashboard.")) return;
-  
-  const f = fixtures[fixId];
-  // 1. If an assessment was already submitted for this fixture, delete it from evaluations
-  if (f && f.evaluationId) {
-    evaluationsRef.child(f.evaluationId).remove();
-  }
-  
-  // 2. If the deleted fixture is the active match on the notation tab, clear out the timer/banner state
-  if (activeFixtureId === fixId) {
-    activeFixtureId = null;
-    currentFixture = null;
-    renderActiveMatchBanner();
-    resetTimerState();
-  }
-
-  // 3. Delete the fixture entry itself
+  if (!confirm("Delete this scheduled game?")) return;
   fixturesRef.child(fixId).remove().then(() => {
     if (editingFixtureId === fixId) resetScheduleForm();
     showToast("Fixture deleted");
@@ -1034,11 +1018,26 @@ function showMatchDetail(evalId){
       <div class="sbox"><div class="sval">${stats.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
     </div>
     ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>`:""}
-    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>`;
+    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>
+    <button class="secondary danger" id="deleteEvalBtn" style="margin-top:8px;width:100%;">Delete Match</button>`;
   panel.replaceWith(wrap);
   wrap.id = "profilePanel";
   document.getElementById("backFromMatch").addEventListener("click", () => showRefereeProfile(e.refereeId));
   document.getElementById("exportXlsxBtn").addEventListener("click", () => exportMatchExcel(e));
+  document.getElementById("deleteEvalBtn").addEventListener("click", () => deleteEvaluation(evalId));
+}
+
+function deleteEvaluation(evalId){
+  const e = evaluations[evalId]; if (!e) return;
+  if (!confirm(`Are you sure you want to completely delete this match assessment for ${esc(teamsLabel(e))}?`)) return;
+  const refId = e.refereeId;
+  evaluationsRef.child(evalId).remove().then(() => {
+    if (e.fixtureId) {
+      fixturesRef.child(e.fixtureId).remove();
+    }
+    showToast("Match entry deleted successfully");
+    showRefereeProfile(refId);
+  }).catch(err => showToast("Error: " + err.message));
 }
 
 /* ===================== DASHBOARD ===================== */
@@ -1115,7 +1114,6 @@ refereesRef.on("value", snap => {
 evaluationsRef.on("value", snap => {
   evaluations = snap.val() || {};
   renderDashboard();
-  if (document.getElementById("refereesListView").style.display !== "none") renderRefereesList();
 });
 fixturesRef.on("value", snap => {
   fixtures = snap.val() || {};
