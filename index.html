@@ -11,7 +11,13 @@
     --accent:#ffc233; --accent-ink:#1a1305; --accent-2:#1f9d55; --text:#eef6ee; --text-dim:#9fc2a8;
     --danger:#e2574c; --good:#2bbf6b; --mid:#ffc233; --bad:#e2574c; --radius:12px;
   }
-  @media (prefers-color-scheme: light){\n    :root{\n      --bg:#f5f8f3; --panel:#ffffff; --panel-2:#eef6ec; --border:#d3e3d1;\n      --accent:#b8860b; --accent-ink:#ffffff; --accent-2:#1f9d55; --text:#152017; --text-dim:#5d7264;\n      --danger:#c0392b; --good:#1f9d55; --mid:#b8860b; --bad:#c0392b;\n    }\n  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f5f8f3; --panel:#ffffff; --panel-2:#eef6ec; --border:#d3e3d1;
+      --accent:#b8860b; --accent-ink:#ffffff; --accent-2:#1f9d55; --text:#152017; --text-dim:#5d7264;
+      --danger:#c0392b; --good:#1f9d55; --mid:#b8860b; --bad:#c0392b;
+    }
+  }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-text-size-adjust:100%;}
   header{background:linear-gradient(135deg,var(--panel-2),var(--bg));border-bottom:2px solid var(--accent);padding:calc(14px + env(safe-area-inset-top)) 14px 0;position:sticky;top:0;z-index:50;}
@@ -98,7 +104,6 @@
   .event-btn.scrum{border-color:#3a6ea5;color:#5b9bd5;}
   .event-btn.lineout{border-color:var(--accent-2);color:var(--accent-2);}
   .event-btn.advantage{border-color:#9b59b6;color:#c39bd3;}
-  .event-btn.try{border-color:#d35400;color:#e67e22;}
   .reason-picker{background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:12px;margin-top:10px;}
   .reason-picker-title{font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;text-align:center;}
   .reason-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
@@ -180,8 +185,7 @@
         <button class="event-btn freekick" id="btnFreeKick" disabled>Free Kick</button>
         <button class="event-btn scrum" id="btnScrum" disabled>Scrum</button>
         <button class="event-btn lineout" id="btnLineout" disabled>Line-out</button>
-        <button class="event-btn advantage" id="btnAdvantage" disabled>Advantage</button>
-        <button class="event-btn try" id="btnTry" disabled>Try</button>
+        <button class="event-btn advantage" id="btnAdvantage" disabled style="grid-column:1/-1;">Advantage</button>
       </div>
 
       <div class="advantage-picker" id="advantagePicker" style="display:none;">
@@ -492,22 +496,19 @@ function endGame(){
 }
 
 function setEventButtonsEnabled(on){
-  ["btnPenalty","btnFreeKick","btnScrum","btnLineout","btnAdvantage","btnTry"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !on || matchEnded;
-  });
+  ["btnPenalty","btnFreeKick","btnScrum","btnLineout","btnAdvantage"].forEach(id =>
+    document.getElementById(id).disabled = !on || matchEnded
+  );
 }
 
 /* ===================== EVENT BUTTONS ===================== */
-["btnPenalty", "btnFreeKick", "btnScrum", "btnLineout", "btnTry"].forEach(id => {
+const EVENT_BTN_MAP = {btnPenalty:"Penalty", btnFreeKick:"Free Kick", btnScrum:"Scrum", btnLineout:"Line-out"};
+Object.keys(EVENT_BTN_MAP).forEach(id => {
   document.getElementById(id).addEventListener("click", () => {
-    let type = "";
-    if (id === "btnPenalty") type = "Penalty";
-    if (id === "btnFreeKick") type = "Free Kick";
-    if (id === "btnScrum") type = "Scrum";
-    if (id === "btnLineout") type = "Line-out";
-    if (id === "btnTry") type = "Try";
-    openReasonPicker(type);
+    const type = EVENT_BTN_MAP[id];
+    document.getElementById("advantagePicker").style.display = "none";
+    if (type === "Penalty" || type === "Free Kick") openReasonPicker(type);
+    else logEvent(type);
   });
 });
 
@@ -533,31 +534,17 @@ document.getElementById("advantageCancelBtn").addEventListener("click", () => {
   document.getElementById("advantagePicker").style.display = "none";
 });
 
-/* ===================== PICKER OVERLAYS (PENALTY/FREE KICK/SCRUM/LINEOUT/TRY) ===================== */
+/* ===================== PENALTY / FREE KICK PICKER ===================== */
 function openReasonPicker(type){
-  document.getElementById("advantagePicker").style.display = "none";
-  let titleText = "";
-  let teamLabelText = "";
-  
-  if (type === "Penalty" || type === "Free Kick") {
-    titleText = `${type} — Select Team & Reason`;
-    teamLabelText = "Against Which Team?";
-  } else if (type === "Scrum" || type === "Line-out") {
-    titleText = `${type} — Select Team`;
-    teamLabelText = "Throw-in / Feed Team?";
-  } else if (type === "Try") {
-    titleText = `Try — Select Team`;
-    teamLabelText = "Which Team Scored?";
-  }
-  
-  document.getElementById("reasonPickerTitle").textContent = titleText;
+  const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
+  document.getElementById("reasonPickerTitle").textContent = `${type} — Select Team & Reason`;
   const t1 = currentFixture?.team1 || "Team 1";
   const t2 = currentFixture?.team2 || "Team 2";
   selectedReasonTeam = "";
 
   const teamContainer = document.getElementById("reasonTeamContainer");
   teamContainer.innerHTML = `
-    <label style="text-align:center;margin-bottom:4px;">${teamLabelText}</label>
+    <label style="text-align:center;margin-bottom:4px;">Against Which Team?</label>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
       <button type="button" id="pickerTeam1Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
       <button type="button" id="pickerTeam2Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
@@ -567,36 +554,21 @@ function openReasonPicker(type){
   const btn2 = document.getElementById("pickerTeam2Btn");
   btn1.textContent = t1;
   btn2.textContent = t2;
+  btn1.addEventListener("click", () => selectPickerTeam(t1, btn1, btn2));
+  btn2.addEventListener("click", () => selectPickerTeam(t2, btn2, btn1));
 
   const grid = document.getElementById("reasonGrid");
   grid.innerHTML = "";
-
-  if (type === "Penalty" || type === "Free Kick") {
-    btn1.addEventListener("click", () => selectPickerTeam(t1, btn1, btn2));
-    btn2.addEventListener("click", () => selectPickerTeam(t2, btn2, btn1));
-    
-    const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
-    reasons.forEach(r => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = r;
-      btn.addEventListener("click", () => {
-        if (!selectedReasonTeam){ showToast("Please select the offending team first!"); return; }
-        logEvent(type, r);
-      });
-      grid.appendChild(btn);
+  reasons.forEach(r => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = r;
+    btn.addEventListener("click", () => {
+      if (!selectedReasonTeam){ showToast("Please select the offending team first!"); return; }
+      logEvent(type, r);
     });
-  } else {
-    // For Scrum, Line-out, or Try - directly log on team selection
-    btn1.addEventListener("click", () => {
-      selectedReasonTeam = t1;
-      logEvent(type, "");
-    });
-    btn2.addEventListener("click", () => {
-      selectedReasonTeam = t2;
-      logEvent(type, "");
-    });
-  }
+    grid.appendChild(btn);
+  });
 
   document.getElementById("reasonPicker").style.display = "block";
   document.getElementById("reasonPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
@@ -663,7 +635,7 @@ function renderTimeline(){
           <option value="Played Out" ${ev.reason==="Played Out"?"selected":""}>Played Out</option>
           <option value="Did Not Play Out" ${ev.reason==="Did Not Play Out"?"selected":""}>Did Not Play Out</option>
         </select>` : ""}
-        ${(ev.type==="Penalty"||ev.type==="Free Kick"||ev.type==="Scrum"||ev.type==="Line-out"||ev.type==="Try") ? `
+        ${(ev.type==="Penalty"||ev.type==="Free Kick") ? `
         <select onchange="updateEventField(${ev.id},'team',this.value)">
           <option value="" ${ev.team===""?"selected":""}>Team</option>
           <option value="${esc(t1)}" ${ev.team===t1?"selected":""}>${esc(t1)}</option>
@@ -691,9 +663,8 @@ function matchNotationStats(events){
   const totalErrors = events.filter(e => e.error).length;
   const totalNDs = events.filter(e => e.nd).length;
   const totalHIDs = events.filter(e => e.hid).length;
-  const totalTries = events.filter(e => e.type === "Try").length;
   return {totalScrums, totalScrumResets, totalPenalties, totalFreeKicks, totalLineouts,
-          totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors, totalNDs, totalHIDs, totalTries};
+          totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors, totalNDs, totalHIDs};
 }
 
 function renderFinalStats(){
@@ -710,7 +681,6 @@ function renderFinalStats(){
     <div class="sbox"><div class="sval">${s.totalErrors}</div><div class="slabel">Errors</div></div>
     <div class="sbox"><div class="sval">${s.totalNDs}</div><div class="slabel">ND's</div></div>
     <div class="sbox"><div class="sval">${s.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
-    <div class="sbox"><div class="sval">${s.totalTries || 0}</div><div class="slabel">Tries</div></div>
   `;
 }
 
@@ -898,7 +868,23 @@ function editFixture(fixId){
 }
 
 function deleteFixture(fixId){
-  if (!confirm("Delete this scheduled game?")) return;
+  if (!confirm("Delete this scheduled game? This will also remove its evaluation from the referee profile and dashboard.")) return;
+  
+  const f = fixtures[fixId];
+  // 1. If an assessment was already submitted for this fixture, delete it from evaluations
+  if (f && f.evaluationId) {
+    evaluationsRef.child(f.evaluationId).remove();
+  }
+  
+  // 2. If the deleted fixture is the active match on the notation tab, clear out the timer/banner state
+  if (activeFixtureId === fixId) {
+    activeFixtureId = null;
+    currentFixture = null;
+    renderActiveMatchBanner();
+    resetTimerState();
+  }
+
+  // 3. Delete the fixture entry itself
   fixturesRef.child(fixId).remove().then(() => {
     if (editingFixtureId === fixId) resetScheduleForm();
     showToast("Fixture deleted");
@@ -1046,93 +1032,13 @@ function showMatchDetail(evalId){
       <div class="sbox"><div class="sval">${stats.totalErrors}</div><div class="slabel">Errors</div></div>
       <div class="sbox"><div class="sval">${stats.totalNDs}</div><div class="slabel">ND's</div></div>
       <div class="sbox"><div class="sval">${stats.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
-      <div class="sbox"><div class="sval">${stats.totalTries || 0}</div><div class="slabel">Tries</div></div>
     </div>
     ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>`:""}
-    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>
-    <button class="secondary" id="editMatchAssessmentBtn" style="margin-top:8px;width:100%;">Edit Assessment Details</button>
-  `;
+    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>`;
   panel.replaceWith(wrap);
   wrap.id = "profilePanel";
   document.getElementById("backFromMatch").addEventListener("click", () => showRefereeProfile(e.refereeId));
   document.getElementById("exportXlsxBtn").addEventListener("click", () => exportMatchExcel(e));
-  document.getElementById("editMatchAssessmentBtn").addEventListener("click", () => showEditMatchAssessmentMode(evalId));
-}
-
-function showEditMatchAssessmentMode(evalId) {
-  const e = evaluations[evalId]; if (!e) return;
-  const panel = document.getElementById("profilePanel");
-  
-  let refOptions = Object.entries(referees).map(([id, r]) => 
-    `<option value="${id}" ${e.refereeId === id ? "selected" : ""}>${esc(r.name)}</option>`
-  ).join("");
-  
-  let criteriaHtml = CRITERIA.map(crit => {
-    const currentVal = e.scores?.[crit.key] !== undefined ? e.scores[crit.key] : 7;
-    return `
-      <div class="criteria-row">
-        <div class="crow-top"><strong>${crit.label}</strong><span class="score-val" id="edit-val-${crit.key}">${currentVal}</span></div>
-        <input type="range" min="1" max="10" step="1" value="${currentVal}" id="edit-range-${crit.key}" oninput="document.getElementById('edit-val-${crit.key}').textContent=this.value">
-      </div>
-    `;
-  }).join("");
-
-  panel.innerHTML = `
-    <span class="back-link" id="cancelMatchEdit">&larr; Cancel Edit</span>
-    <h2>Edit Assessment Details</h2>
-    
-    <label>Referee Assigned</label>
-    <select id="editMatchRefSelect">${refOptions}</select>
-    
-    <label>Evaluator Name</label>
-    <input type="text" id="editMatchEvaluator" value="${esc(e.evaluatorName || "")}">
-    
-    <h3>Scores</h3>
-    <div id="editCriteriaContainer">${criteriaHtml}</div>
-    
-    <h3>General Notes</h3>
-    <textarea id="editMatchNotes" style="min-height:100px;">${esc(e.generalNotes || "")}</textarea>
-    
-    <button class="primary" id="saveMatchEditBtn" style="margin-top:14px;">Save Assessment Changes</button>
-  `;
-  
-  document.getElementById("cancelMatchEdit").addEventListener("click", () => showMatchDetail(evalId));
-  
-  document.getElementById("saveMatchEditBtn").addEventListener("click", () => {
-    const newRefId = document.getElementById("editMatchRefSelect").value;
-    const newRefName = referees[newRefId]?.name || "Unknown";
-    const newEvaluator = document.getElementById("editMatchEvaluator").value.trim();
-    const newNotes = document.getElementById("editMatchNotes").value.trim();
-    
-    const updatedScores = {};
-    CRITERIA.forEach(crit => {
-      updatedScores[crit.key] = Number(document.getElementById(`edit-range-${crit.key}`).value);
-    });
-    
-    const vals = CRITERIA.map(c => updatedScores[c.key]);
-    const newOverall = Number((vals.reduce((a,b)=>a+b,0) / vals.length).toFixed(2));
-    
-    const updateData = {
-      refereeId: newRefId,
-      refereeName: newRefName,
-      evaluatorName: newEvaluator,
-      generalNotes: newNotes,
-      scores: updatedScores,
-      overall: newOverall
-    };
-    
-    evaluationsRef.child(evalId).update(updateData).then(() => {
-      showToast("Assessment details updated successfully");
-      if (e.fixtureId) {
-        fixturesRef.child(e.fixtureId).update({
-          refereeId: newRefId,
-          refereeName: newRefName,
-          evaluatorName: newEvaluator
-        });
-      }
-      showMatchDetail(evalId);
-    }).catch(err => showToast("Error updating assessment: " + err.message));
-  });
 }
 
 /* ===================== DASHBOARD ===================== */
@@ -1172,7 +1078,7 @@ function exportMatchExcel(e){
   const summaryRows = [
     ["Total Scrums", s.totalScrums, "Total Scrum Resets", s.totalScrumResets, "Total Penalties", s.totalPenalties],
     ["Total Free Kicks", s.totalFreeKicks, "Total Line-outs", s.totalLineouts, "Total Advantages", s.totalAdvantages],
-    ["Advantages Played Out", s.totalAdvPlayedOut, "Advantages Not Played", s.totalAdvNotPlayed, "Total Tries", s.totalTries || 0],
+    ["Advantages Played Out", s.totalAdvPlayedOut, "Advantages Not Played", s.totalAdvNotPlayed, "", ""],
     ["Total Errors", s.totalErrors, "Total ND's", s.totalNDs, "Total HID's / CI's", s.totalHIDs], []
   ];
   const notationHeader = ["Half","Time","Type","Reason","Team","Reset?","Error","ND","HID","Comment"];
@@ -1209,6 +1115,7 @@ refereesRef.on("value", snap => {
 evaluationsRef.on("value", snap => {
   evaluations = snap.val() || {};
   renderDashboard();
+  if (document.getElementById("refereesListView").style.display !== "none") renderRefereesList();
 });
 fixturesRef.on("value", snap => {
   fixtures = snap.val() || {};
