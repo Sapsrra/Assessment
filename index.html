@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -86,14 +87,10 @@
   .match-card{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer;}
   .match-card:hover{border-color:var(--accent);}
   .match-card .mline{display:flex;justify-content:space-between;font-size:.78rem;color:var(--text-dim);}
-
-  /* Active match banner */
   .active-match{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
   .active-match .am-teams{font-weight:700;font-size:1rem;margin-bottom:4px;}
   .active-match .am-meta{font-size:.76rem;color:var(--text-dim);}
   .active-match.none{text-align:center;color:var(--text-dim);font-size:.84rem;}
-
-  /* Timer + live notation */
   .timer-card{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
   .half-badge{display:inline-block;background:var(--bg);border:1px solid var(--accent);color:var(--accent);font-weight:700;font-size:.7rem;padding:3px 10px;border-radius:14px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
   .timer-display{font-size:clamp(2rem,12vw,2.6rem);font-weight:800;font-family:"SF Mono",Consolas,monospace;color:var(--accent);letter-spacing:1px;}
@@ -107,11 +104,19 @@
   .event-btn.freekick{border-color:var(--accent);color:var(--accent);}
   .event-btn.scrum{border-color:#3a6ea5;color:#5b9bd5;}
   .event-btn.lineout{border-color:var(--accent-2);color:var(--accent-2);}
+  .event-btn.advantage{border-color:#9b59b6;color:#c39bd3;}
   .reason-picker{background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:12px;margin-top:10px;}
   .reason-picker-title{font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;text-align:center;}
   .reason-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
   .reason-grid button{padding:10px 6px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:.78rem;font-weight:600;cursor:pointer;min-height:42px;touch-action:manipulation;}
   .reason-grid button:hover{border-color:var(--accent);}
+  /* Advantage outcome picker */
+  .advantage-picker{background:var(--bg);border:1px solid #9b59b6;border-radius:10px;padding:12px;margin-top:10px;}
+  .advantage-picker-title{font-size:.78rem;font-weight:700;color:#c39bd3;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;text-align:center;}
+  .advantage-outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+  .advantage-outcome-grid button{padding:18px 8px;border-radius:10px;font-weight:700;font-size:.9rem;cursor:pointer;min-height:58px;touch-action:manipulation;border:2px solid;}
+  .adv-played{background:rgba(43,191,107,.1);border-color:var(--good);color:var(--good);}
+  .adv-notplayed{background:rgba(226,87,76,.1);border-color:var(--danger);color:var(--danger);}
   .timeline-item{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:7px;}
   .timeline-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;}
   .timeline-top .ttype{font-weight:700;font-size:.84rem;}
@@ -120,8 +125,6 @@
   .timeline-fields select,.timeline-fields input[type=text]{flex:1 1 90px;font-size:.78rem;padding:7px;}
   .timeline-fields .tchk{display:flex;align-items:center;gap:3px;font-size:.7rem;color:var(--text-dim);flex:0 0 auto;}
   .timeline-fields .tchk input{width:16px;height:16px;}
-
-  /* Fixtures (Schedule) */
   details.fixturegroup{background:var(--panel);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;}
   details.fixturegroup summary{padding:11px 14px;cursor:pointer;font-weight:700;font-size:.88rem;color:var(--accent);display:flex;justify-content:space-between;align-items:center;list-style:none;}
   details.fixturegroup summary::-webkit-details-marker{display:none;}
@@ -136,7 +139,6 @@
   .status-pill.completed{background:var(--accent-2);color:#fff;}
   .fixture-actions{display:flex;gap:6px;margin-top:8px;}
   .fixture-actions button{flex:1;}
-
   @media (max-width:380px){
     header h1{font-size:1.02rem;}
     .timer-display{font-size:2rem;}
@@ -184,13 +186,22 @@
         <button class="event-btn freekick" id="btnFreeKick" disabled>Free Kick</button>
         <button class="event-btn scrum" id="btnScrum" disabled>Scrum</button>
         <button class="event-btn lineout" id="btnLineout" disabled>Line-out</button>
+        <button class="event-btn advantage" id="btnAdvantage" disabled style="grid-column:1/-1;">Advantage</button>
+      </div>
+
+      <!-- Advantage outcome picker -->
+      <div class="advantage-picker" id="advantagePicker" style="display:none;">
+        <div class="advantage-picker-title">Advantage — Select Outcome</div>
+        <div class="advantage-outcome-grid">
+          <button class="adv-played" id="btnAdvPlayedOut">✓ Played Out</button>
+          <button class="adv-notplayed" id="btnAdvNotPlayed">✗ Did Not Play Out</button>
+        </div>
+        <button class="secondary small" id="advantageCancelBtn" style="width:100%;">Cancel</button>
       </div>
 
       <div class="reason-picker" id="reasonPicker" style="display:none;">
         <div class="reason-picker-title" id="reasonPickerTitle">Reason</div>
-        
         <div id="reasonTeamContainer"></div>
-
         <div class="reason-grid" id="reasonGrid"></div>
         <button class="secondary small" id="reasonCancelBtn" style="width:100%;margin-top:6px;">Cancel</button>
       </div>
@@ -237,7 +248,6 @@
         <button class="primary" id="addFixtureBtn">Schedule Game</button>
       </div>
     </div>
-
     <div id="fixtureGroups"></div>
   </section>
 
@@ -258,7 +268,6 @@
         <div id="refereesList"><div class="empty">No referees yet — add one above.</div></div>
       </div>
     </div>
-
     <div id="refereeProfileView" style="display:none;">
       <span class="back-link" id="backToRefList">&larr; Back to list</span>
       <div class="panel" id="profilePanel"></div>
@@ -311,15 +320,18 @@ db.ref(".info/connected").on("value", snap => {
   document.getElementById("connDot").classList.toggle("ok", snap.val() === true);
 });
 
-/* ===================== STATIC LOOKUPS ===================== */
+/* ===================== CRITERIA (Alphabetical order) ===================== */
 const CRITERIA = [
-  {key:"gameManagement", label:"Game Management", desc:"Control of the match, decision-making under pressure"},
-  {key:"lawApplication", label:"Application of Laws", desc:"Accuracy and consistency of law interpretation"},
-  {key:"positioning", label:"Fitness & Positioning", desc:"Field positioning, work rate, keeping up with play"},
-  {key:"communication", label:"Communication & Player Management", desc:"Clarity, tone, managing players and captains"},
-  {key:"advantage", label:"Advantage & Game Flow", desc:"Allowing advantage, keeping the game flowing"},
-  {key:"safety", label:"Player Safety", desc:"Management of contact areas, scrums, and tackles for safety"}
+  {key:"advantage",       label:"Advantage",                    desc:"Allowing advantage, keeping the game flowing"},
+  {key:"breakdown",       label:"Breakdown",                    desc:"Management of rucks, mauls and breakdown situations"},
+  {key:"communication",   label:"Communication and Management", desc:"Clarity, tone, managing players and captains"},
+  {key:"foulPlay",        label:"Foul Play",                    desc:"Detection and management of foul play incidents"},
+  {key:"refContrib",      label:"Referee Contribution",         desc:"Overall contribution and positive presence on the field"},
+  {key:"relevance",       label:"Relevance",                    desc:"Relevance of decisions to the flow and context of the game"},
+  {key:"scrums",          label:"Scrums",                       desc:"Accuracy and safety management of scrums"},
+  {key:"spaceOffside",    label:"Space & Offside",              desc:"Management of offside lines and use of space"}
 ];
+
 const PENALTY_REASONS = ["Offside","Not Rolling Away","High Tackle","Collapsed Scrum","Foul Play","Obstruction","Dangerous Play","Ruck Infringement","Scrum Infringement","Lineout Infringement","Technical","Other"];
 const FREEKICK_REASONS = ["Scrum Infringement","Lineout Infringement","Accidental Offside","Mark","Quick Throw-in Error","Short-arm (Technical)","Other"];
 
@@ -329,7 +341,7 @@ let fixtures = {};
 let currentScores = {};
 let currentFixture = null;
 let editingFixtureId = null;
-let selectedReasonTeam = ""; // Stores team selected during penalty logging
+let selectedReasonTeam = "";
 
 function teamsLabel(o){
   if (!o) return "";
@@ -396,7 +408,7 @@ function renderActiveMatchBanner(){
   `;
 }
 
-/* ===================== TIMER + LIVE NOTATION ===================== */
+/* ===================== TIMER ===================== */
 let timerSeconds = 0;
 let timerInterval = null;
 let timerRunning = false;
@@ -477,6 +489,7 @@ function endGame(){
   document.getElementById("endGameBtn").disabled = true;
   document.getElementById("startHalf2Btn").style.display = "none";
   document.getElementById("reasonPicker").style.display = "none";
+  document.getElementById("advantagePicker").style.display = "none";
   selectedReasonTeam = "";
   setEventButtonsEnabled(false);
   renderFinalStats();
@@ -485,23 +498,48 @@ function endGame(){
 }
 
 function setEventButtonsEnabled(on){
-  ["btnPenalty","btnFreeKick","btnScrum","btnLineout"].forEach(id => document.getElementById(id).disabled = !on || matchEnded);
+  ["btnPenalty","btnFreeKick","btnScrum","btnLineout","btnAdvantage"].forEach(id =>
+    document.getElementById(id).disabled = !on || matchEnded
+  );
 }
 
+/* ===================== EVENT BUTTONS ===================== */
 const EVENT_BTN_MAP = {btnPenalty:"Penalty", btnFreeKick:"Free Kick", btnScrum:"Scrum", btnLineout:"Line-out"};
 Object.keys(EVENT_BTN_MAP).forEach(id => {
   document.getElementById(id).addEventListener("click", () => {
     const type = EVENT_BTN_MAP[id];
+    document.getElementById("advantagePicker").style.display = "none";
     if (type === "Penalty" || type === "Free Kick") openReasonPicker(type);
     else logEvent(type);
   });
 });
 
-/* ===================== PENALTY / FREE KICK TEAM & REASON PICKER ===================== */
+// Advantage button — show outcome picker
+document.getElementById("btnAdvantage").addEventListener("click", () => {
+  document.getElementById("reasonPicker").style.display = "none";
+  selectedReasonTeam = "";
+  document.getElementById("advantagePicker").style.display = "block";
+  document.getElementById("advantagePicker").scrollIntoView({behavior:"smooth", block:"nearest"});
+});
+
+document.getElementById("btnAdvPlayedOut").addEventListener("click", () => {
+  logEvent("Advantage", "Played Out");
+  document.getElementById("advantagePicker").style.display = "none";
+});
+
+document.getElementById("btnAdvNotPlayed").addEventListener("click", () => {
+  logEvent("Advantage", "Did Not Play Out");
+  document.getElementById("advantagePicker").style.display = "none";
+});
+
+document.getElementById("advantageCancelBtn").addEventListener("click", () => {
+  document.getElementById("advantagePicker").style.display = "none";
+});
+
+/* ===================== PENALTY / FREE KICK PICKER ===================== */
 function openReasonPicker(type){
   const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
   document.getElementById("reasonPickerTitle").textContent = `${type} — Select Team & Reason`;
-  
   const t1 = currentFixture?.team1 || "Team 1";
   const t2 = currentFixture?.team2 || "Team 2";
   selectedReasonTeam = "";
@@ -514,12 +552,10 @@ function openReasonPicker(type){
       <button type="button" id="pickerTeam2Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
     </div>
   `;
-  
   const btn1 = document.getElementById("pickerTeam1Btn");
   const btn2 = document.getElementById("pickerTeam2Btn");
   btn1.textContent = t1;
   btn2.textContent = t2;
-  
   btn1.addEventListener("click", () => selectPickerTeam(t1, btn1, btn2));
   btn2.addEventListener("click", () => selectPickerTeam(t2, btn2, btn1));
 
@@ -530,10 +566,7 @@ function openReasonPicker(type){
     btn.type = "button";
     btn.textContent = r;
     btn.addEventListener("click", () => {
-      if (!selectedReasonTeam) {
-        showToast("Please select the offending team first!");
-        return;
-      }
+      if (!selectedReasonTeam){ showToast("Please select the offending team first!"); return; }
       logEvent(type, r);
     });
     grid.appendChild(btn);
@@ -543,7 +576,7 @@ function openReasonPicker(type){
   document.getElementById("reasonPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
 }
 
-function selectPickerTeam(teamName, activeBtn, inactiveBtn) {
+function selectPickerTeam(teamName, activeBtn, inactiveBtn){
   selectedReasonTeam = teamName;
   inactiveBtn.style.borderColor = "var(--border)";
   inactiveBtn.style.background = "var(--panel-2)";
@@ -599,11 +632,17 @@ function renderTimeline(){
         <select onchange="updateEventField(${ev.id},'reason',this.value)">
           ${(ev.type==="Penalty"?PENALTY_REASONS:FREEKICK_REASONS).map(r => `<option ${ev.reason===r?"selected":""}>${esc(r)}</option>`).join("")}
         </select>` : ""}
+        ${ev.type==="Advantage" ? `
+        <select onchange="updateEventField(${ev.id},'reason',this.value)">
+          <option value="Played Out" ${ev.reason==="Played Out"?"selected":""}>Played Out</option>
+          <option value="Did Not Play Out" ${ev.reason==="Did Not Play Out"?"selected":""}>Did Not Play Out</option>
+        </select>` : ""}
+        ${(ev.type==="Penalty"||ev.type==="Free Kick") ? `
         <select onchange="updateEventField(${ev.id},'team',this.value)">
           <option value="" ${ev.team===""?"selected":""}>Team</option>
           <option value="${esc(t1)}" ${ev.team===t1?"selected":""}>${esc(t1)}</option>
           <option value="${esc(t2)}" ${ev.team===t2?"selected":""}>${esc(t2)}</option>
-        </select>
+        </select>` : ""}
         ${ev.type==="Scrum" ? `<label class="tchk"><input type="checkbox" ${ev.reset?"checked":""} onchange="updateEventField(${ev.id},'reset',this.checked)"> Reset</label>` : ""}
         <label class="tchk"><input type="checkbox" ${ev.error?"checked":""} onchange="updateEventField(${ev.id},'error',this.checked)"> Error</label>
         <label class="tchk"><input type="checkbox" ${ev.nd?"checked":""} onchange="updateEventField(${ev.id},'nd',this.checked)"> ND</label>
@@ -620,10 +659,14 @@ function matchNotationStats(events){
   const totalPenalties = events.filter(e => e.type === "Penalty").length;
   const totalFreeKicks = events.filter(e => e.type === "Free Kick").length;
   const totalLineouts = events.filter(e => e.type === "Line-out").length;
+  const totalAdvantages = events.filter(e => e.type === "Advantage").length;
+  const totalAdvPlayedOut = events.filter(e => e.type === "Advantage" && e.reason === "Played Out").length;
+  const totalAdvNotPlayed = events.filter(e => e.type === "Advantage" && e.reason === "Did Not Play Out").length;
   const totalErrors = events.filter(e => e.error).length;
   const totalNDs = events.filter(e => e.nd).length;
   const totalHIDs = events.filter(e => e.hid).length;
-  return {totalScrums, totalScrumResets, totalPenalties, totalFreeKicks, totalLineouts, totalErrors, totalNDs, totalHIDs};
+  return {totalScrums, totalScrumResets, totalPenalties, totalFreeKicks, totalLineouts,
+          totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors, totalNDs, totalHIDs};
 }
 
 function renderFinalStats(){
@@ -634,6 +677,9 @@ function renderFinalStats(){
     <div class="sbox"><div class="sval">${s.totalPenalties}</div><div class="slabel">Penalties</div></div>
     <div class="sbox"><div class="sval">${s.totalFreeKicks}</div><div class="slabel">Free Kicks</div></div>
     <div class="sbox"><div class="sval">${s.totalLineouts}</div><div class="slabel">Line-outs</div></div>
+    <div class="sbox"><div class="sval">${s.totalAdvantages}</div><div class="slabel">Advantages</div></div>
+    <div class="sbox"><div class="sval">${s.totalAdvPlayedOut}</div><div class="slabel">Played Out</div></div>
+    <div class="sbox"><div class="sval">${s.totalAdvNotPlayed}</div><div class="slabel">Not Played</div></div>
     <div class="sbox"><div class="sval">${s.totalErrors}</div><div class="slabel">Errors</div></div>
     <div class="sbox"><div class="sval">${s.totalNDs}</div><div class="slabel">ND's</div></div>
     <div class="sbox"><div class="sval">${s.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
@@ -653,12 +699,13 @@ function resetTimerState(){
   document.getElementById("startHalf2Btn").style.display = "none";
   document.getElementById("postGamePanel").style.display = "none";
   document.getElementById("reasonPicker").style.display = "none";
+  document.getElementById("advantagePicker").style.display = "none";
   setEventButtonsEnabled(false);
   updateTimerDisplay();
   renderTimeline();
 }
 
-/* ===================== SELECT POPULATION ===================== */
+/* ===================== REFEREE SELECT ===================== */
 function refreshFixRefSelect(){
   const active = Object.entries(referees).filter(([id,r]) => r.active !== false);
   document.getElementById("fixRefSelect").innerHTML = active.length
@@ -666,11 +713,10 @@ function refreshFixRefSelect(){
     : `<option value="">Add a referee first</option>`;
 }
 
-/* ===================== SUBMIT MATCH ASSESSMENT ===================== */
+/* ===================== SUBMIT ASSESSMENT ===================== */
 document.getElementById("submitEvalBtn").addEventListener("click", () => {
   if (!currentFixture){ showToast("No active match — start one from Schedule"); return; }
   const overall = computeOverall(currentScores);
-
   const entry = {
     refereeId: currentFixture.refereeId,
     refereeName: currentFixture.refereeName || "Unknown",
@@ -688,7 +734,6 @@ document.getElementById("submitEvalBtn").addEventListener("click", () => {
     events: [...timelineEvents],
     timestamp: Date.now()
   };
-
   evaluationsRef.push(entry).then(ref => {
     if (activeFixtureId){
       fixturesRef.child(activeFixtureId).update({status:"completed", evaluationId: ref.key});
@@ -703,8 +748,8 @@ document.getElementById("submitEvalBtn").addEventListener("click", () => {
   }).catch(err => showToast("Error: " + err.message));
 });
 
-/* ===================== SCHEDULE / FIXTURES (WITH EDIT) ===================== */
-function resetScheduleForm() {
+/* ===================== SCHEDULE / FIXTURES ===================== */
+function resetScheduleForm(){
   editingFixtureId = null;
   document.getElementById("scheduleFormTitle").textContent = "Schedule a Game";
   document.getElementById("addFixtureBtn").textContent = "Schedule Game";
@@ -725,7 +770,6 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
   if (!team1 || !team2){ showToast("Enter both team names"); return; }
   if (!refId){ showToast("Select a referee"); return; }
   if (!evaluatorName){ showToast("Enter the evaluator's name"); return; }
-
   const fixtureData = {
     date, time: document.getElementById("fixTime").value || "",
     team1, team2, venue: document.getElementById("fixVenue").value.trim(),
@@ -733,21 +777,18 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
     refereeId: refId, refereeName: referees[refId]?.name || "",
     evaluatorName, halfLength
   };
-
-  if (editingFixtureId) {
+  if (editingFixtureId){
     fixtureData.status = fixtures[editingFixtureId]?.status || "upcoming";
     fixtureData.evaluationId = fixtures[editingFixtureId]?.evaluationId || null;
     fixturesRef.child(editingFixtureId).update(fixtureData).then(() => {
-      showToast("Game updated");
-      resetScheduleForm();
+      showToast("Game updated"); resetScheduleForm();
     }).catch(err => showToast("Error: " + err.message));
   } else {
     fixtureData.status = "upcoming";
     fixtureData.evaluationId = null;
     fixtureData.createdAt = Date.now();
     fixturesRef.push(fixtureData).then(() => {
-      showToast("Game scheduled");
-      resetScheduleForm();
+      showToast("Game scheduled"); resetScheduleForm();
     }).catch(err => showToast("Error: " + err.message));
   }
 });
@@ -766,14 +807,13 @@ function renderFixtureGroups(){
   const groups = {"Live":[], "Upcoming":[], "Past":[]};
   list.forEach(f => groups[fixtureGroup(f)].push(f));
   Object.keys(groups).forEach(g => groups[g].sort((a,b) => (a.date+(a.time||"")).localeCompare(b.date+(b.time||""))));
-
   wrap.innerHTML = Object.entries(groups).map(([groupName, items]) => `
     <details class="fixturegroup" ${groupName==="Past" ? "" : "open"}>
       <summary>${groupName} <span class="cnt">${items.length}</span></summary>
       <div class="fixture-list">
         ${items.length === 0 ? '<div class="empty">None</div>' : items.map(f => `
           <div class="fixture-card">
-            <div class="fline"><span>${f.date}${f.time ? " · "+f.time : ""}</span><span class="status-pill ${f.status}">${f.status}</span></div>
+            <div class="fline"><span>${f.date}${f.time?" · "+f.time:""}</span><span class="status-pill ${f.status}">${f.status}</span></div>
             <div class="fteams">${esc(teamsLabel(f))}</div>
             <div class="fline"><span>${esc(f.refereeName)} ${f.venue?"· "+esc(f.venue):""}</span></div>
             <div class="fline"><span>Evaluator: ${esc(f.evaluatorName||"")} · Half: ${f.halfLength||35} min</span></div>
@@ -782,11 +822,9 @@ function renderFixtureGroups(){
               <button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>
               <button class="secondary small danger" onclick="deleteFixture('${f.id}')">Delete</button>
             </div>
-          </div>
-        `).join("")}
+          </div>`).join("")}
       </div>
-    </details>
-  `).join("");
+    </details>`).join("");
 }
 
 function startAssessmentFromFixture(fixId){
@@ -803,7 +841,7 @@ function startAssessmentFromFixture(fixId){
   showToast("Match loaded — start the timer when ready");
 }
 
-function editFixture(fixId) {
+function editFixture(fixId){
   const f = fixtures[fixId]; if (!f) return;
   editingFixtureId = fixId;
   document.getElementById("scheduleFormTitle").textContent = "Edit Scheduled Game";
@@ -816,20 +854,15 @@ function editFixture(fixId) {
   document.getElementById("fixRefSelect").value = f.refereeId || "";
   document.getElementById("fixEvaluator").value = f.evaluatorName || "";
   document.getElementById("fixHalfLength").value = f.halfLength || 35;
-  
   document.getElementById("addFixtureBtn").textContent = "Update Game";
-  
-  if (!document.getElementById("cancelEditFixBtn")) {
+  if (!document.getElementById("cancelEditFixBtn")){
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "secondary";
     cancelBtn.id = "cancelEditFixBtn";
     cancelBtn.textContent = "Cancel Edit";
     cancelBtn.style.marginTop = "8px";
     cancelBtn.style.width = "100%";
-    cancelBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      resetScheduleForm();
-    });
+    cancelBtn.addEventListener("click", e => { e.preventDefault(); resetScheduleForm(); });
     document.getElementById("addFixtureBtn").after(cancelBtn);
   }
   document.querySelector('.tab-btn[data-tab="schedule"]').click();
@@ -839,12 +872,12 @@ function editFixture(fixId) {
 function deleteFixture(fixId){
   if (!confirm("Delete this scheduled game?")) return;
   fixturesRef.child(fixId).remove().then(() => {
-    if(editingFixtureId === fixId) resetScheduleForm();
+    if (editingFixtureId === fixId) resetScheduleForm();
     showToast("Fixture deleted");
   });
 }
 
-/* ===================== REFEREES (WITH EDIT) ===================== */
+/* ===================== REFEREES ===================== */
 document.getElementById("addRefBtn").addEventListener("click", () => {
   const name = document.getElementById("newRefName").value.trim();
   if (!name){ showToast("Enter a name"); return; }
@@ -870,13 +903,10 @@ function renderRefereesList(){
   if (ids.length === 0){ list.innerHTML = `<div class="empty">No referees yet — add one above.</div>`; return; }
   list.innerHTML = ids.sort((a,b)=>referees[a].name.localeCompare(referees[b].name)).map(id => {
     const r = referees[id]; const stats = refereeStats(id);
-    return `
-      <div class="ref-card ${r.active===false?"inactive":""}" data-id="${id}">
-        <div>
-          <div class="name">${esc(r.name)}</div>
-          <div class="meta">${esc(r.grade||"")}${r.club ? " · " + esc(r.club) : ""} ${r.active===false?"· Inactive":""}</div>
-        </div>
-        <div class="score-pill">${stats.count>0 ? stats.avg.toFixed(1) : "—"}</div>
+    return `<div class="ref-card ${r.active===false?"inactive":""}" data-id="${id}">
+        <div><div class="name">${esc(r.name)}</div>
+        <div class="meta">${esc(r.grade||"")}${r.club?" · "+esc(r.club):""} ${r.active===false?"· Inactive":""}</div></div>
+        <div class="score-pill">${stats.count>0?stats.avg.toFixed(1):"—"}</div>
       </div>`;
   }).join("");
   list.querySelectorAll(".ref-card").forEach(card => card.addEventListener("click", () => showRefereeProfile(card.dataset.id)));
@@ -890,7 +920,7 @@ function refereeStats(refId){
   CRITERIA.forEach(c => perCriteria[c.key] = count ? evals.reduce((s,e)=>s+(Number(e.scores?.[c.key])||0),0)/count : 0);
   return {count, avg, perCriteria, evals: evals.sort((a,b)=>b.timestamp-a.timestamp)};
 }
-function scoreColor(v){ return v>=8 ? "var(--good)" : v>=6 ? "var(--mid)" : "var(--bad)"; }
+function scoreColor(v){ return v>=8?"var(--good)":v>=6?"var(--mid)":"var(--bad)"; }
 
 function showRefereeProfile(refId){
   const r = referees[refId]; if (!r) return;
@@ -907,8 +937,7 @@ function showRefereeProfile(refId){
       <button class="secondary" id="editRefBtn">Edit Details</button>
       <button class="secondary" id="toggleActiveBtn">${r.active===false?"Mark Active":"Mark Inactive"}</button>
       <button class="secondary danger" id="deleteRefBtn">Delete Referee</button>
-    </div>
-  `;
+    </div>`;
   const bars = document.getElementById("profileBars");
   CRITERIA.forEach(c => {
     const v = stats.perCriteria[c.key]; const pct = (v/10)*100;
@@ -917,19 +946,15 @@ function showRefereeProfile(refId){
       <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>`;
     bars.appendChild(row);
   });
-  
-  document.getElementById("editRefBtn").addEventListener("click", () => {
-    showRefereeEditMode(refId);
-  });
+  document.getElementById("editRefBtn").addEventListener("click", () => showRefereeEditMode(refId));
   document.getElementById("toggleActiveBtn").addEventListener("click", () => {
-    refereesRef.child(refId).update({active: r.active===false ? true : false}).then(()=>showRefereeProfile(refId));
+    refereesRef.child(refId).update({active: r.active===false?true:false}).then(()=>showRefereeProfile(refId));
   });
   document.getElementById("deleteRefBtn").addEventListener("click", () => {
     if (confirm(`Delete ${r.name}? Past match assessments are kept but unlinked.`)){
       refereesRef.child(refId).remove().then(()=>{ showToast("Referee deleted"); showRefereesList(); });
     }
   });
-
   const hist = document.getElementById("profileHistory");
   if (stats.evals.length === 0){ hist.innerHTML = `<div class="empty">No matches assessed yet.</div>`; return; }
   hist.innerHTML = stats.evals.map(e => `
@@ -937,47 +962,37 @@ function showRefereeProfile(refId){
       <div class="mline"><span>${e.matchDate||"No date"} ${e.competition?"· "+esc(e.competition):""}</span>
         <span style="color:${scoreColor(e.overall)};font-weight:700;">${e.overall.toFixed(1)}</span></div>
       <div>${esc(teamsLabel(e))}</div>
-    </div>
-  `).join("");
+    </div>`).join("");
   hist.querySelectorAll(".match-card").forEach(card => card.addEventListener("click", () => showMatchDetail(card.dataset.id)));
 }
 
-function showRefereeEditMode(refId) {
+function showRefereeEditMode(refId){
   const r = referees[refId]; if (!r) return;
   const panel = document.getElementById("profilePanel");
   panel.innerHTML = `
     <h2>Edit Referee Details</h2>
-    <label>Name</label>
-    <input type="text" id="editRefName" value="${esc(r.name)}">
-    <label>Grade</label>
-    <input type="text" id="editRefGrade" value="${esc(r.grade||"")}">
-    <label>Club / Association</label>
-    <input type="text" id="editRefClub" value="${esc(r.club||"")}">
+    <label>Name</label><input type="text" id="editRefName" value="${esc(r.name)}">
+    <label>Grade</label><input type="text" id="editRefGrade" value="${esc(r.grade||"")}">
+    <label>Club / Association</label><input type="text" id="editRefClub" value="${esc(r.club||"")}">
     <div class="btnrow" style="margin-top:14px;">
       <button class="primary" id="saveRefEditBtn">Save Changes</button>
       <button class="secondary" id="cancelRefEditBtn">Cancel</button>
-    </div>
-  `;
+    </div>`;
   document.getElementById("saveRefEditBtn").addEventListener("click", () => {
     const name = document.getElementById("editRefName").value.trim();
-    if (!name) { showToast("Enter a name"); return; }
+    if (!name){ showToast("Enter a name"); return; }
     const grade = document.getElementById("editRefGrade").value.trim();
     const club = document.getElementById("editRefClub").value.trim();
-    
-    refereesRef.child(refId).update({ name, grade, club }).then(() => {
+    refereesRef.child(refId).update({name, grade, club}).then(() => {
       showToast("Referee details updated");
-      // Update any associated fixtures so the new name reflects there too
       Object.entries(fixtures).forEach(([fId, f]) => {
-        if (f.refereeId === refId && f.refereeName !== name) {
-          fixturesRef.child(fId).update({ refereeName: name });
-        }
+        if (f.refereeId === refId && f.refereeName !== name)
+          fixturesRef.child(fId).update({refereeName: name});
       });
       showRefereeProfile(refId);
     }).catch(err => showToast("Error: " + err.message));
   });
-  document.getElementById("cancelRefEditBtn").addEventListener("click", () => {
-    showRefereeProfile(refId);
-  });
+  document.getElementById("cancelRefEditBtn").addEventListener("click", () => showRefereeProfile(refId));
 }
 
 function showMatchDetail(evalId){
@@ -988,7 +1003,7 @@ function showMatchDetail(evalId){
   wrap.className = "panel";
   wrap.innerHTML = `
     <span class="back-link" id="backFromMatch">&larr; Back to referee</span>
-    <h2>${esc(teamsLabel(e) || "Match")} ${e.matchDate?"· "+e.matchDate:""}</h2>
+    <h2>${esc(teamsLabel(e)||"Match")} ${e.matchDate?"· "+e.matchDate:""}</h2>
     <div style="color:var(--text-dim);font-size:.82rem;">${esc(e.competition||"")} ${e.venue?"· "+esc(e.venue):""}</div>
     <div class="overall-box"><span>Overall Score</span><span class="num">${e.overall.toFixed(1)}</span></div>
     <div class="summary-grid">
@@ -997,13 +1012,15 @@ function showMatchDetail(evalId){
       <div class="sbox"><div class="sval">${stats.totalPenalties}</div><div class="slabel">Penalties</div></div>
       <div class="sbox"><div class="sval">${stats.totalFreeKicks}</div><div class="slabel">Free Kicks</div></div>
       <div class="sbox"><div class="sval">${stats.totalLineouts}</div><div class="slabel">Line-outs</div></div>
+      <div class="sbox"><div class="sval">${stats.totalAdvantages}</div><div class="slabel">Advantages</div></div>
+      <div class="sbox"><div class="sval">${stats.totalAdvPlayedOut}</div><div class="slabel">Played Out</div></div>
+      <div class="sbox"><div class="sval">${stats.totalAdvNotPlayed}</div><div class="slabel">Not Played</div></div>
       <div class="sbox"><div class="sval">${stats.totalErrors}</div><div class="slabel">Errors</div></div>
       <div class="sbox"><div class="sval">${stats.totalNDs}</div><div class="slabel">ND's</div></div>
       <div class="sbox"><div class="sval">${stats.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
     </div>
-    ${e.generalNotes ? `<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>` : ""}
-    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>
-  `;
+    ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>`:""}
+    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>`;
   panel.replaceWith(wrap);
   wrap.id = "profilePanel";
   document.getElementById("backFromMatch").addEventListener("click", () => showRefereeProfile(e.refereeId));
@@ -1029,16 +1046,15 @@ function renderDashboard(){
       <div class="eval-item">
         <div class="eline"><span>${esc(e.refereeName)} ${e.matchDate?"· "+e.matchDate:""}</span>
           <span style="color:${scoreColor(e.overall)};font-weight:700;">${e.overall.toFixed(1)}</span></div>
-        <div>${esc(teamsLabel(e) || e.competition || "")}</div>
+        <div>${esc(teamsLabel(e)||e.competition||"")}</div>
         <div style="color:var(--text-dim);font-size:.78rem;">By ${esc(e.evaluatorName)}</div>
       </div>`).join("");
 }
 
-/* ===================== EXPORT: EXCEL (single match datasheet) ===================== */
+/* ===================== EXPORT EXCEL ===================== */
 function exportMatchExcel(e){
   const s = matchNotationStats(e.events || []);
   const wb = XLSX.utils.book_new();
-
   const infoRows = [
     ["Referee", e.refereeName], ["Evaluator", e.evaluatorName],
     ["Match Date", e.matchDate||""], ["Competition", e.competition||""],
@@ -1047,12 +1063,12 @@ function exportMatchExcel(e){
   ];
   const summaryRows = [
     ["Total Scrums", s.totalScrums, "Total Scrum Resets", s.totalScrumResets, "Total Penalties", s.totalPenalties],
-    ["Total Free Kicks", s.totalFreeKicks, "Total Line-outs", s.totalLineouts, "", ""],
+    ["Total Free Kicks", s.totalFreeKicks, "Total Line-outs", s.totalLineouts, "Total Advantages", s.totalAdvantages],
+    ["Advantages Played Out", s.totalAdvPlayedOut, "Advantages Not Played", s.totalAdvNotPlayed, "", ""],
     ["Total Errors", s.totalErrors, "Total ND's", s.totalNDs, "Total HID's / CI's", s.totalHIDs], []
   ];
   const notationHeader = ["Half","Time","Type","Reason","Team","Reset?","Error","ND","HID","Comment"];
   const notationRows = (e.events||[]).map(ev => [ev.half, formatTime(ev.time), ev.type, ev.reason||"", ev.team, ev.reset?"Y":"", ev.error?"Y":"", ev.nd?"Y":"", ev.hid?"Y":"", ev.comment]);
-
   const sheetData = [...infoRows, ...summaryRows, ["EVENT TIMELINE"], notationHeader, ...notationRows];
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
   ws["!cols"] = [{wch:8},{wch:10},{wch:12},{wch:20},{wch:10},{wch:8},{wch:8},{wch:6},{wch:6},{wch:30}];
@@ -1075,7 +1091,7 @@ function showToast(msg){
   setTimeout(() => t.classList.remove("show"), 2200);
 }
 
-/* ===================== FIREBASE REALTIME LISTENERS ===================== */
+/* ===================== FIREBASE LISTENERS ===================== */
 refereesRef.on("value", snap => {
   referees = snap.val() || {};
   refreshFixRefSelect();
@@ -1097,6 +1113,5 @@ updateTimerDisplay();
 setEventButtonsEnabled(false);
 renderActiveMatchBanner();
 </script>
-
 </body>
 </html>
