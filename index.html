@@ -11,13 +11,7 @@
     --accent:#ffc233; --accent-ink:#1a1305; --accent-2:#1f9d55; --text:#eef6ee; --text-dim:#9fc2a8;
     --danger:#e2574c; --good:#2bbf6b; --mid:#ffc233; --bad:#e2574c; --radius:12px;
   }
-  @media (prefers-color-scheme: light){
-    :root{
-      --bg:#f5f8f3; --panel:#ffffff; --panel-2:#eef6ec; --border:#d3e3d1;
-      --accent:#b8860b; --accent-ink:#ffffff; --accent-2:#1f9d55; --text:#152017; --text-dim:#5d7264;
-      --danger:#c0392b; --good:#1f9d55; --mid:#b8860b; --bad:#c0392b;
-    }
-  }
+  @media (prefers-color-scheme: light){\n    :root{\n      --bg:#f5f8f3; --panel:#ffffff; --panel-2:#eef6ec; --border:#d3e3d1;\n      --accent:#b8860b; --accent-ink:#ffffff; --accent-2:#1f9d55; --text:#152017; --text-dim:#5d7264;\n      --danger:#c0392b; --good:#1f9d55; --mid:#b8860b; --bad:#c0392b;\n    }\n  }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-text-size-adjust:100%;}
   header{background:linear-gradient(135deg,var(--panel-2),var(--bg));border-bottom:2px solid var(--accent);padding:calc(14px + env(safe-area-inset-top)) 14px 0;position:sticky;top:0;z-index:50;}
@@ -66,8 +60,7 @@
   .bar-row .blabel{display:flex;justify-content:space-between;font-size:.76rem;margin-bottom:3px;color:var(--text-dim);}
   .bar-track{background:var(--bg);border-radius:6px;height:8px;overflow:hidden;}
   .bar-fill{height:100%;border-radius:6px;background:var(--accent-2);}
-  .eval-item{border-bottom:1px solid var(--border);padding:10px 0;font-size:.84rem;cursor:pointer;}
-  .eval-item:hover{background:var(--panel-2);}
+  .eval-item{border-bottom:1px solid var(--border);padding:10px 0;font-size:.84rem;}
   .eval-item:last-child{border-bottom:none;}
   .eval-item .eline{display:flex;justify-content:space-between;color:var(--text-dim);font-size:.74rem;margin-bottom:3px;}
   .leader-row{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:7px;}
@@ -105,11 +98,13 @@
   .event-btn.scrum{border-color:#3a6ea5;color:#5b9bd5;}
   .event-btn.lineout{border-color:var(--accent-2);color:var(--accent-2);}
   .event-btn.advantage{border-color:#9b59b6;color:#c39bd3;}
+  .event-btn.try{border-color:#d35400;color:#e67e22;}
   .reason-picker{background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:12px;margin-top:10px;}
   .reason-picker-title{font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;text-align:center;}
   .reason-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
   .reason-grid button{padding:10px 6px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:.78rem;font-weight:600;cursor:pointer;min-height:42px;touch-action:manipulation;}
   .reason-grid button:hover{border-color:var(--accent);}
+  /* Advantage outcome picker */
   .advantage-picker{background:var(--bg);border:1px solid #9b59b6;border-radius:10px;padding:12px;margin-top:10px;}
   .advantage-picker-title{font-size:.78rem;font-weight:700;color:#c39bd3;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;text-align:center;}
   .advantage-outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
@@ -185,7 +180,8 @@
         <button class="event-btn freekick" id="btnFreeKick" disabled>Free Kick</button>
         <button class="event-btn scrum" id="btnScrum" disabled>Scrum</button>
         <button class="event-btn lineout" id="btnLineout" disabled>Line-out</button>
-        <button class="event-btn advantage" id="btnAdvantage" disabled style="grid-column:1/-1;">Advantage</button>
+        <button class="event-btn advantage" id="btnAdvantage" disabled>Advantage</button>
+        <button class="event-btn try" id="btnTry" disabled>Try</button>
       </div>
 
       <div class="advantage-picker" id="advantagePicker" style="display:none;">
@@ -209,7 +205,7 @@
     </div>
 
     <div class="panel" id="postGamePanel" style="display:none;">
-      <h2 id="finalAssessmentTitle">Final Assessment</h2>
+      <h2>Final Assessment</h2>
       <div class="summary-grid" id="finalStatsGrid"></div>
       <h3>Overall Performance Score</h3>
       <div id="criteriaContainer"></div>
@@ -296,6 +292,7 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
 <script>
+/* ===================== FIREBASE CONFIG ===================== */
 const firebaseConfig = {
   apiKey: "AIzaSyAh-3vKipYPtgjnoEbbfkglSFS8y_L7Q0k",
   authDomain: "referee-b0fa2.firebaseapp.com",
@@ -317,6 +314,7 @@ db.ref(".info/connected").on("value", snap => {
   document.getElementById("connDot").classList.toggle("ok", snap.val() === true);
 });
 
+/* ===================== CRITERIA (Alphabetical order) ===================== */
 const CRITERIA = [
   {key:"advantage",       label:"Advantage",                    desc:"Allowing advantage, keeping the game flowing"},
   {key:"breakdown",       label:"Breakdown",                    desc:"Management of rucks, mauls and breakdown situations"},
@@ -337,7 +335,6 @@ let fixtures = {};
 let currentScores = {};
 let currentFixture = null;
 let editingFixtureId = null;
-let editingEvaluationId = null;
 let selectedReasonTeam = "";
 
 function teamsLabel(o){
@@ -346,6 +343,7 @@ function teamsLabel(o){
   return "";
 }
 
+/* ===================== TABS ===================== */
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -354,21 +352,21 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
     if (btn.dataset.tab === "referees") showRefereesList();
     if (btn.dataset.tab === "schedule") renderFixtureGroups();
-    if (btn.dataset.tab === "dashboard") renderDashboard();
   });
 });
 
+/* ===================== CRITERIA SCORING ===================== */
 function buildCriteriaInputs(){
   const c = document.getElementById("criteriaContainer");
   c.innerHTML = "";
   CRITERIA.forEach(crit => {
-    if(currentScores[crit.key] === undefined) currentScores[crit.key] = 7;
+    currentScores[crit.key] = 7;
     const row = document.createElement("div");
     row.className = "criteria-row";
     row.innerHTML = `
-      <div class="crow-top"><strong>${crit.label}</strong><span class="score-val" id="val-${crit.key}">${currentScores[crit.key]}</span></div>
+      <div class="crow-top"><strong>${crit.label}</strong><span class="score-val" id="val-${crit.key}">7</span></div>
       <div class="desc">${crit.desc}</div>
-      <input type="range" min="1" max="10" step="1" value="${currentScores[crit.key]}" id="range-${crit.key}">
+      <input type="range" min="1" max="10" step="1" value="7" id="range-${crit.key}">
     `;
     c.appendChild(row);
     row.querySelector("input").addEventListener("input", e => {
@@ -387,6 +385,7 @@ function updateOverallDisplay(){
   document.getElementById("overallScoreDisplay").textContent = computeOverall(currentScores).toFixed(1);
 }
 
+/* ===================== ACTIVE MATCH BANNER ===================== */
 function renderActiveMatchBanner(){
   const el = document.getElementById("activeMatchBanner");
   if (!currentFixture){
@@ -400,10 +399,10 @@ function renderActiveMatchBanner(){
     <div class="am-teams">${esc(teamsLabel(f))}</div>
     <div class="am-meta">${f.date||""}${f.time?" · "+f.time:""} ${f.venue?"· "+esc(f.venue):""} ${f.competition?"· "+esc(f.competition):""}</div>
     <div class="am-meta">Referee: ${esc(f.refereeName||"")} · Evaluator: ${esc(f.evaluatorName||"")} · Half length: ${f.halfLength||35} min</div>
-    ${editingEvaluationId ? `<div class="badge" style="background:var(--danger);color:#fff;margin-top:5px;display:inline-block;">EDITING MODE</div>` : ""}
   `;
 }
 
+/* ===================== TIMER ===================== */
 let timerSeconds = 0;
 let timerInterval = null;
 let timerRunning = false;
@@ -430,12 +429,10 @@ function updateTimerDisplay(){
 function tick(){ timerSeconds++; updateTimerDisplay(); }
 
 document.getElementById("startPauseBtn").addEventListener("click", () => {
-  if (matchEnded) return;
+  if (matchEnded || !activeFixtureId) return;
   if (timerRunning){
     clearInterval(timerInterval); timerRunning = false;
     document.getElementById("startPauseBtn").textContent = "Start";
-    document.getElementById("endHalfBtn").disabled = true;
-    setEventButtonsEnabled(false);
   } else {
     timerInterval = setInterval(tick, 1000); timerRunning = true;
     document.getElementById("startPauseBtn").textContent = "Pause";
@@ -495,21 +492,26 @@ function endGame(){
 }
 
 function setEventButtonsEnabled(on){
-  ["btnPenalty","btnFreeKick","btnScrum","btnLineout","btnAdvantage"].forEach(id =>
-    document.getElementById(id).disabled = !on || matchEnded
-  );
+  ["btnPenalty","btnFreeKick","btnScrum","btnLineout","btnAdvantage","btnTry"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !on || matchEnded;
+  });
 }
 
-const EVENT_BTN_MAP = {btnPenalty:"Penalty", btnFreeKick:"Free Kick", btnScrum:"Scrum", btnLineout:"Line-out"};
-Object.keys(EVENT_BTN_MAP).forEach(id => {
+/* ===================== EVENT BUTTONS ===================== */
+["btnPenalty", "btnFreeKick", "btnScrum", "btnLineout", "btnTry"].forEach(id => {
   document.getElementById(id).addEventListener("click", () => {
-    const type = EVENT_BTN_MAP[id];
-    document.getElementById("advantagePicker").style.display = "none";
-    if (type === "Penalty" || type === "Free Kick") openReasonPicker(type);
-    else logEvent(type);
+    let type = "";
+    if (id === "btnPenalty") type = "Penalty";
+    if (id === "btnFreeKick") type = "Free Kick";
+    if (id === "btnScrum") type = "Scrum";
+    if (id === "btnLineout") type = "Line-out";
+    if (id === "btnTry") type = "Try";
+    openReasonPicker(type);
   });
 });
 
+// Advantage button — show outcome picker
 document.getElementById("btnAdvantage").addEventListener("click", () => {
   document.getElementById("reasonPicker").style.display = "none";
   selectedReasonTeam = "";
@@ -531,16 +533,31 @@ document.getElementById("advantageCancelBtn").addEventListener("click", () => {
   document.getElementById("advantagePicker").style.display = "none";
 });
 
+/* ===================== PICKER OVERLAYS (PENALTY/FREE KICK/SCRUM/LINEOUT/TRY) ===================== */
 function openReasonPicker(type){
-  const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
-  document.getElementById("reasonPickerTitle").textContent = `${type} — Select Team & Reason`;
+  document.getElementById("advantagePicker").style.display = "none";
+  let titleText = "";
+  let teamLabelText = "";
+  
+  if (type === "Penalty" || type === "Free Kick") {
+    titleText = `${type} — Select Team & Reason`;
+    teamLabelText = "Against Which Team?";
+  } else if (type === "Scrum" || type === "Line-out") {
+    titleText = `${type} — Select Team`;
+    teamLabelText = "Throw-in / Feed Team?";
+  } else if (type === "Try") {
+    titleText = `Try — Select Team`;
+    teamLabelText = "Which Team Scored?";
+  }
+  
+  document.getElementById("reasonPickerTitle").textContent = titleText;
   const t1 = currentFixture?.team1 || "Team 1";
   const t2 = currentFixture?.team2 || "Team 2";
   selectedReasonTeam = "";
 
   const teamContainer = document.getElementById("reasonTeamContainer");
   teamContainer.innerHTML = `
-    <label style="text-align:center;margin-bottom:4px;">Against Which Team?</label>
+    <label style="text-align:center;margin-bottom:4px;">${teamLabelText}</label>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
       <button type="button" id="pickerTeam1Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
       <button type="button" id="pickerTeam2Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
@@ -550,21 +567,36 @@ function openReasonPicker(type){
   const btn2 = document.getElementById("pickerTeam2Btn");
   btn1.textContent = t1;
   btn2.textContent = t2;
-  btn1.addEventListener("click", () => selectPickerTeam(t1, btn1, btn2));
-  btn2.addEventListener("click", () => selectPickerTeam(t2, btn2, btn1));
 
   const grid = document.getElementById("reasonGrid");
   grid.innerHTML = "";
-  reasons.forEach(r => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = r;
-    btn.addEventListener("click", () => {
-      if (!selectedReasonTeam){ showToast("Please select the offending team first!"); return; }
-      logEvent(type, r);
+
+  if (type === "Penalty" || type === "Free Kick") {
+    btn1.addEventListener("click", () => selectPickerTeam(t1, btn1, btn2));
+    btn2.addEventListener("click", () => selectPickerTeam(t2, btn2, btn1));
+    
+    const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
+    reasons.forEach(r => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = r;
+      btn.addEventListener("click", () => {
+        if (!selectedReasonTeam){ showToast("Please select the offending team first!"); return; }
+        logEvent(type, r);
+      });
+      grid.appendChild(btn);
     });
-    grid.appendChild(btn);
-  });
+  } else {
+    // For Scrum, Line-out, or Try - directly log on team selection
+    btn1.addEventListener("click", () => {
+      selectedReasonTeam = t1;
+      logEvent(type, "");
+    });
+    btn2.addEventListener("click", () => {
+      selectedReasonTeam = t2;
+      logEvent(type, "");
+    });
+  }
 
   document.getElementById("reasonPicker").style.display = "block";
   document.getElementById("reasonPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
@@ -631,7 +663,7 @@ function renderTimeline(){
           <option value="Played Out" ${ev.reason==="Played Out"?"selected":""}>Played Out</option>
           <option value="Did Not Play Out" ${ev.reason==="Did Not Play Out"?"selected":""}>Did Not Play Out</option>
         </select>` : ""}
-        ${(ev.type==="Penalty"||ev.type==="Free Kick") ? `
+        ${(ev.type==="Penalty"||ev.type==="Free Kick"||ev.type==="Scrum"||ev.type==="Line-out"||ev.type==="Try") ? `
         <select onchange="updateEventField(${ev.id},'team',this.value)">
           <option value="" ${ev.team===""?"selected":""}>Team</option>
           <option value="${esc(t1)}" ${ev.team===t1?"selected":""}>${esc(t1)}</option>
@@ -659,8 +691,9 @@ function matchNotationStats(events){
   const totalErrors = events.filter(e => e.error).length;
   const totalNDs = events.filter(e => e.nd).length;
   const totalHIDs = events.filter(e => e.hid).length;
+  const totalTries = events.filter(e => e.type === "Try").length;
   return {totalScrums, totalScrumResets, totalPenalties, totalFreeKicks, totalLineouts,
-          totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors, totalNDs, totalHIDs};
+          totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors, totalNDs, totalHIDs, totalTries};
 }
 
 function renderFinalStats(){
@@ -677,6 +710,7 @@ function renderFinalStats(){
     <div class="sbox"><div class="sval">${s.totalErrors}</div><div class="slabel">Errors</div></div>
     <div class="sbox"><div class="sval">${s.totalNDs}</div><div class="slabel">ND's</div></div>
     <div class="sbox"><div class="sval">${s.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
+    <div class="sbox"><div class="sval">${s.totalTries || 0}</div><div class="slabel">Tries</div></div>
   `;
 }
 
@@ -694,12 +728,12 @@ function resetTimerState(){
   document.getElementById("postGamePanel").style.display = "none";
   document.getElementById("reasonPicker").style.display = "none";
   document.getElementById("advantagePicker").style.display = "none";
-  document.getElementById("finalAssessmentTitle").textContent = "Final Assessment";
   setEventButtonsEnabled(false);
   updateTimerDisplay();
   renderTimeline();
 }
 
+/* ===================== REFEREE SELECT ===================== */
 function refreshFixRefSelect(){
   const active = Object.entries(referees).filter(([id,r]) => r.active !== false);
   document.getElementById("fixRefSelect").innerHTML = active.length
@@ -707,8 +741,9 @@ function refreshFixRefSelect(){
     : `<option value="">Add a referee first</option>`;
 }
 
+/* ===================== SUBMIT ASSESSMENT ===================== */
 document.getElementById("submitEvalBtn").addEventListener("click", () => {
-  if (!currentFixture){ showToast("No active match loaded."); return; }
+  if (!currentFixture){ showToast("No active match — start one from Schedule"); return; }
   const overall = computeOverall(currentScores);
   const entry = {
     refereeId: currentFixture.refereeId,
@@ -725,33 +760,23 @@ document.getElementById("submitEvalBtn").addEventListener("click", () => {
     generalNotes: document.getElementById("evalGeneralNotes").value.trim(),
     half1Duration, half2Duration, halfLength: currentFixture.halfLength || 35,
     events: [...timelineEvents],
-    timestamp: currentFixture.timestamp || Date.now()
+    timestamp: Date.now()
   };
-
-  const handleSuccess = () => {
-    showToast(editingEvaluationId ? "Assessment updated successfully" : "Match assessment submitted");
+  evaluationsRef.push(entry).then(ref => {
+    if (activeFixtureId){
+      fixturesRef.child(activeFixtureId).update({status:"completed", evaluationId: ref.key});
+    }
+    showToast("Match assessment submitted");
     document.getElementById("evalGeneralNotes").value = "";
-    editingEvaluationId = null;
     activeFixtureId = null;
     currentFixture = null;
     renderActiveMatchBanner();
-    currentScores = {};
     resetTimerState();
     buildCriteriaInputs();
-  };
-
-  if (editingEvaluationId) {
-    evaluationsRef.child(editingEvaluationId).set(entry).then(handleSuccess).catch(err => showToast("Error: " + err.message));
-  } else {
-    evaluationsRef.push(entry).then(ref => {
-      if (activeFixtureId){
-        fixturesRef.child(activeFixtureId).update({status:"completed", evaluationId: ref.key});
-      }
-      handleSuccess();
-    }).catch(err => showToast("Error: " + err.message));
-  }
+  }).catch(err => showToast("Error: " + err.message));
 });
 
+/* ===================== SCHEDULE / FIXTURES ===================== */
 function resetScheduleForm(){
   editingFixtureId = null;
   document.getElementById("scheduleFormTitle").textContent = "Schedule a Game";
@@ -822,8 +847,7 @@ function renderFixtureGroups(){
             <div class="fline"><span>Evaluator: ${esc(f.evaluatorName||"")} · Half: ${f.halfLength||35} min</span></div>
             <div class="fixture-actions">
               ${f.status !== "completed" ? `<button class="secondary small" onclick="startAssessmentFromFixture('${f.id}')">${f.status==="live"?"Continue Assessment":"Start Assessment"}</button>` : ""}
-              ${f.status === "completed" && f.evaluationId ? `<button class="secondary small" onclick="editCompletedAssessment('${f.evaluationId}')">Edit Assessment</button>` : ""}
-              <button class="secondary small" onclick="editFixture('${f.id}')">Edit Info</button>
+              <button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>
               <button class="secondary small danger" onclick="deleteFixture('${f.id}')">Delete</button>
             </div>
           </div>`).join("")}
@@ -836,7 +860,6 @@ function startAssessmentFromFixture(fixId){
   document.querySelector('.tab-btn[data-tab="notation"]').click();
   resetTimerState();
   activeFixtureId = fixId;
-  editingEvaluationId = null;
   currentFixture = {...f};
   halfLengthMinutes = f.halfLength || 35;
   renderActiveMatchBanner();
@@ -844,53 +867,6 @@ function startAssessmentFromFixture(fixId){
   document.getElementById("startPauseBtn").disabled = false;
   fixturesRef.child(fixId).update({status:"live"});
   showToast("Match loaded — start the timer when ready");
-}
-
-function editCompletedAssessment(evalId) {
-  const ev = evaluations[evalId]; if (!ev) return;
-  document.querySelector('.tab-btn[data-tab="notation"]').click();
-  resetTimerState();
-  
-  editingEvaluationId = evalId;
-  activeFixtureId = ev.fixtureId || null;
-  currentFixture = {
-    date: ev.matchDate,
-    time: "",
-    venue: ev.venue,
-    competition: ev.competition,
-    team1: ev.team1,
-    team2: ev.team2,
-    refereeId: ev.refereeId,
-    refereeName: ev.refereeName,
-    evaluatorName: ev.evaluatorName,
-    halfLength: ev.halfLength,
-    timestamp: ev.timestamp
-  };
-  
-  halfLengthMinutes = ev.halfLength || 35;
-  half1Duration = ev.half1Duration || 0;
-  half2Duration = ev.half2Duration || 0;
-  timelineEvents = ev.events || [];
-  
-  if (timelineEvents.length > 0) {
-    evtCounter = Math.max(...timelineEvents.map(e => e.id)) || 0;
-  }
-  
-  currentScores = {...ev.scores};
-  document.getElementById("evalGeneralNotes").value = ev.generalNotes || "";
-  
-  renderActiveMatchBanner();
-  buildCriteriaInputs();
-  renderTimeline();
-  
-  matchEnded = true;
-  document.getElementById("halfBadge").textContent = "Full Time (Editing)";
-  document.getElementById("startPauseBtn").disabled = true;
-  document.getElementById("finalAssessmentTitle").textContent = "Final Assessment (Modify Mode)";
-  
-  renderFinalStats();
-  document.getElementById("postGamePanel").style.display = "block";
-  showToast("Past evaluation loaded. Modify criteria or actions below.");
 }
 
 function editFixture(fixId){
@@ -929,6 +905,7 @@ function deleteFixture(fixId){
   });
 }
 
+/* ===================== REFEREES ===================== */
 document.getElementById("addRefBtn").addEventListener("click", () => {
   const name = document.getElementById("newRefName").value.trim();
   if (!name){ showToast("Enter a name"); return; }
@@ -1069,19 +1046,96 @@ function showMatchDetail(evalId){
       <div class="sbox"><div class="sval">${stats.totalErrors}</div><div class="slabel">Errors</div></div>
       <div class="sbox"><div class="sval">${stats.totalNDs}</div><div class="slabel">ND's</div></div>
       <div class="sbox"><div class="sval">${stats.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
+      <div class="sbox"><div class="sval">${stats.totalTries || 0}</div><div class="slabel">Tries</div></div>
     </div>
-    ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem; margin-bottom: 12px;">${esc(e.generalNotes)}</div>`:""}
-    <div class="btnrow">
-      <button class="primary" id="editCompletedAssessmentBtn">Edit Evaluation Data</button>
-      <button class="secondary" id="exportXlsxBtn">Export to Excel</button>
-    </div>`;
+    ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>`:""}
+    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>
+    <button class="secondary" id="editMatchAssessmentBtn" style="margin-top:8px;width:100%;">Edit Assessment Details</button>
+  `;
   panel.replaceWith(wrap);
   wrap.id = "profilePanel";
   document.getElementById("backFromMatch").addEventListener("click", () => showRefereeProfile(e.refereeId));
   document.getElementById("exportXlsxBtn").addEventListener("click", () => exportMatchExcel(e));
-  document.getElementById("editCompletedAssessmentBtn").addEventListener("click", () => editCompletedAssessment(evalId));
+  document.getElementById("editMatchAssessmentBtn").addEventListener("click", () => showEditMatchAssessmentMode(evalId));
 }
 
+function showEditMatchAssessmentMode(evalId) {
+  const e = evaluations[evalId]; if (!e) return;
+  const panel = document.getElementById("profilePanel");
+  
+  let refOptions = Object.entries(referees).map(([id, r]) => 
+    `<option value="${id}" ${e.refereeId === id ? "selected" : ""}>${esc(r.name)}</option>`
+  ).join("");
+  
+  let criteriaHtml = CRITERIA.map(crit => {
+    const currentVal = e.scores?.[crit.key] !== undefined ? e.scores[crit.key] : 7;
+    return `
+      <div class="criteria-row">
+        <div class="crow-top"><strong>${crit.label}</strong><span class="score-val" id="edit-val-${crit.key}">${currentVal}</span></div>
+        <input type="range" min="1" max="10" step="1" value="${currentVal}" id="edit-range-${crit.key}" oninput="document.getElementById('edit-val-${crit.key}').textContent=this.value">
+      </div>
+    `;
+  }).join("");
+
+  panel.innerHTML = `
+    <span class="back-link" id="cancelMatchEdit">&larr; Cancel Edit</span>
+    <h2>Edit Assessment Details</h2>
+    
+    <label>Referee Assigned</label>
+    <select id="editMatchRefSelect">${refOptions}</select>
+    
+    <label>Evaluator Name</label>
+    <input type="text" id="editMatchEvaluator" value="${esc(e.evaluatorName || "")}">
+    
+    <h3>Scores</h3>
+    <div id="editCriteriaContainer">${criteriaHtml}</div>
+    
+    <h3>General Notes</h3>
+    <textarea id="editMatchNotes" style="min-height:100px;">${esc(e.generalNotes || "")}</textarea>
+    
+    <button class="primary" id="saveMatchEditBtn" style="margin-top:14px;">Save Assessment Changes</button>
+  `;
+  
+  document.getElementById("cancelMatchEdit").addEventListener("click", () => showMatchDetail(evalId));
+  
+  document.getElementById("saveMatchEditBtn").addEventListener("click", () => {
+    const newRefId = document.getElementById("editMatchRefSelect").value;
+    const newRefName = referees[newRefId]?.name || "Unknown";
+    const newEvaluator = document.getElementById("editMatchEvaluator").value.trim();
+    const newNotes = document.getElementById("editMatchNotes").value.trim();
+    
+    const updatedScores = {};
+    CRITERIA.forEach(crit => {
+      updatedScores[crit.key] = Number(document.getElementById(`edit-range-${crit.key}`).value);
+    });
+    
+    const vals = CRITERIA.map(c => updatedScores[c.key]);
+    const newOverall = Number((vals.reduce((a,b)=>a+b,0) / vals.length).toFixed(2));
+    
+    const updateData = {
+      refereeId: newRefId,
+      refereeName: newRefName,
+      evaluatorName: newEvaluator,
+      generalNotes: newNotes,
+      scores: updatedScores,
+      overall: newOverall
+    };
+    
+    evaluationsRef.child(evalId).update(updateData).then(() => {
+      showToast("Assessment details updated successfully");
+      if (e.fixtureId) {
+        fixturesRef.child(e.fixtureId).update({
+          refereeId: newRefId,
+          refereeName: newRefName,
+          evaluatorName: newEvaluator
+        });
+      }
+      showMatchDetail(evalId);
+    }).catch(err => showToast("Error updating assessment: " + err.message));
+  });
+}
+
+/* ===================== DASHBOARD ===================== */
 function renderDashboard(){
   const leaderboard = document.getElementById("leaderboardList");
   const recent = document.getElementById("recentList");
@@ -1094,10 +1148,10 @@ function renderDashboard(){
         <div class="info"><div class="name">${esc(r.ref.name)}</div><div class="sub">${r.stats.count} match${r.stats.count===1?"":"es"}</div></div>
         <div class="score-pill" style="color:${scoreColor(r.stats.avg)};">${r.stats.avg.toFixed(1)}</div>
       </div>`).join("");
-  const allEvals = Object.keys(evaluations).map(id => ({id, ...evaluations[id]})).sort((a,b)=>b.timestamp-a.timestamp).slice(0,15);
+  const allEvals = Object.values(evaluations).sort((a,b)=>b.timestamp-a.timestamp).slice(0,15);
   recent.innerHTML = allEvals.length === 0 ? `<div class="empty">No assessments yet.</div>` :
     allEvals.map(e => `
-      <div class="eval-item" onclick="loadAssessmentFromDashboard('${e.id}', '${e.refereeId}')">
+      <div class="eval-item">
         <div class="eline"><span>${esc(e.refereeName)} ${e.matchDate?"· "+e.matchDate:""}</span>
           <span style="color:${scoreColor(e.overall)};font-weight:700;">${e.overall.toFixed(1)}</span></div>
         <div>${esc(teamsLabel(e)||e.competition||"")}</div>
@@ -1105,12 +1159,7 @@ function renderDashboard(){
       </div>`).join("");
 }
 
-function loadAssessmentFromDashboard(evalId, refId) {
-  document.querySelector('.tab-btn[data-tab="referees"]').click();
-  showRefereeProfile(refId);
-  showMatchDetail(evalId);
-}
-
+/* ===================== EXPORT EXCEL ===================== */
 function exportMatchExcel(e){
   const s = matchNotationStats(e.events || []);
   const wb = XLSX.utils.book_new();
@@ -1123,7 +1172,7 @@ function exportMatchExcel(e){
   const summaryRows = [
     ["Total Scrums", s.totalScrums, "Total Scrum Resets", s.totalScrumResets, "Total Penalties", s.totalPenalties],
     ["Total Free Kicks", s.totalFreeKicks, "Total Line-outs", s.totalLineouts, "Total Advantages", s.totalAdvantages],
-    ["Advantages Played Out", s.totalAdvPlayedOut, "Advantages Not Played", s.totalAdvNotPlayed, "", ""],
+    ["Advantages Played Out", s.totalAdvPlayedOut, "Advantages Not Played", s.totalAdvNotPlayed, "Total Tries", s.totalTries || 0],
     ["Total Errors", s.totalErrors, "Total ND's", s.totalNDs, "Total HID's / CI's", s.totalHIDs], []
   ];
   const notationHeader = ["Half","Time","Type","Reason","Team","Reset?","Error","ND","HID","Comment"];
@@ -1137,6 +1186,7 @@ function exportMatchExcel(e){
   showToast("Excel datasheet downloaded");
 }
 
+/* ===================== HELPERS ===================== */
 function esc(str){
   if (!str) return "";
   const div = document.createElement("div");
@@ -1149,6 +1199,7 @@ function showToast(msg){
   setTimeout(() => t.classList.remove("show"), 2200);
 }
 
+/* ===================== FIREBASE LISTENERS ===================== */
 refereesRef.on("value", snap => {
   referees = snap.val() || {};
   refreshFixRefSelect();
@@ -1164,6 +1215,7 @@ fixturesRef.on("value", snap => {
   if (document.getElementById("tab-schedule").style.display !== "none") renderFixtureGroups();
 });
 
+/* ===================== INIT ===================== */
 buildCriteriaInputs();
 updateTimerDisplay();
 setEventButtonsEnabled(false);
