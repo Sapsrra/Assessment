@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,7 +66,8 @@
   .bar-row .blabel{display:flex;justify-content:space-between;font-size:.76rem;margin-bottom:3px;color:var(--text-dim);}
   .bar-track{background:var(--bg);border-radius:6px;height:8px;overflow:hidden;}
   .bar-fill{height:100%;border-radius:6px;background:var(--accent-2);}
-  .eval-item{border-bottom:1px solid var(--border);padding:10px 0;font-size:.84rem;}
+  .eval-item{border-bottom:1px solid var(--border);padding:10px 0;font-size:.84rem;cursor:pointer;}
+  .eval-item:hover{background:var(--panel-2);}
   .eval-item:last-child{border-bottom:none;}
   .eval-item .eline{display:flex;justify-content:space-between;color:var(--text-dim);font-size:.74rem;margin-bottom:3px;}
   .leader-row{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:7px;}
@@ -110,7 +110,6 @@
   .reason-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
   .reason-grid button{padding:10px 6px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:.78rem;font-weight:600;cursor:pointer;min-height:42px;touch-action:manipulation;}
   .reason-grid button:hover{border-color:var(--accent);}
-  /* Advantage outcome picker */
   .advantage-picker{background:var(--bg);border:1px solid #9b59b6;border-radius:10px;padding:12px;margin-top:10px;}
   .advantage-picker-title{font-size:.78rem;font-weight:700;color:#c39bd3;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;text-align:center;}
   .advantage-outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
@@ -189,7 +188,6 @@
         <button class="event-btn advantage" id="btnAdvantage" disabled style="grid-column:1/-1;">Advantage</button>
       </div>
 
-      <!-- Advantage outcome picker -->
       <div class="advantage-picker" id="advantagePicker" style="display:none;">
         <div class="advantage-picker-title">Advantage — Select Outcome</div>
         <div class="advantage-outcome-grid">
@@ -211,7 +209,7 @@
     </div>
 
     <div class="panel" id="postGamePanel" style="display:none;">
-      <h2>Final Assessment</h2>
+      <h2 id="finalAssessmentTitle">Final Assessment</h2>
       <div class="summary-grid" id="finalStatsGrid"></div>
       <h3>Overall Performance Score</h3>
       <div id="criteriaContainer"></div>
@@ -298,7 +296,6 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
 <script>
-/* ===================== FIREBASE CONFIG ===================== */
 const firebaseConfig = {
   apiKey: "AIzaSyAh-3vKipYPtgjnoEbbfkglSFS8y_L7Q0k",
   authDomain: "referee-b0fa2.firebaseapp.com",
@@ -320,7 +317,6 @@ db.ref(".info/connected").on("value", snap => {
   document.getElementById("connDot").classList.toggle("ok", snap.val() === true);
 });
 
-/* ===================== CRITERIA (Alphabetical order) ===================== */
 const CRITERIA = [
   {key:"advantage",       label:"Advantage",                    desc:"Allowing advantage, keeping the game flowing"},
   {key:"breakdown",       label:"Breakdown",                    desc:"Management of rucks, mauls and breakdown situations"},
@@ -341,6 +337,7 @@ let fixtures = {};
 let currentScores = {};
 let currentFixture = null;
 let editingFixtureId = null;
+let editingEvaluationId = null;
 let selectedReasonTeam = "";
 
 function teamsLabel(o){
@@ -349,7 +346,6 @@ function teamsLabel(o){
   return "";
 }
 
-/* ===================== TABS ===================== */
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -358,21 +354,21 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
     if (btn.dataset.tab === "referees") showRefereesList();
     if (btn.dataset.tab === "schedule") renderFixtureGroups();
+    if (btn.dataset.tab === "dashboard") renderDashboard();
   });
 });
 
-/* ===================== CRITERIA SCORING ===================== */
 function buildCriteriaInputs(){
   const c = document.getElementById("criteriaContainer");
   c.innerHTML = "";
   CRITERIA.forEach(crit => {
-    currentScores[crit.key] = 7;
+    if(currentScores[crit.key] === undefined) currentScores[crit.key] = 7;
     const row = document.createElement("div");
     row.className = "criteria-row";
     row.innerHTML = `
-      <div class="crow-top"><strong>${crit.label}</strong><span class="score-val" id="val-${crit.key}">7</span></div>
+      <div class="crow-top"><strong>${crit.label}</strong><span class="score-val" id="val-${crit.key}">${currentScores[crit.key]}</span></div>
       <div class="desc">${crit.desc}</div>
-      <input type="range" min="1" max="10" step="1" value="7" id="range-${crit.key}">
+      <input type="range" min="1" max="10" step="1" value="${currentScores[crit.key]}" id="range-${crit.key}">
     `;
     c.appendChild(row);
     row.querySelector("input").addEventListener("input", e => {
@@ -391,7 +387,6 @@ function updateOverallDisplay(){
   document.getElementById("overallScoreDisplay").textContent = computeOverall(currentScores).toFixed(1);
 }
 
-/* ===================== ACTIVE MATCH BANNER ===================== */
 function renderActiveMatchBanner(){
   const el = document.getElementById("activeMatchBanner");
   if (!currentFixture){
@@ -405,10 +400,10 @@ function renderActiveMatchBanner(){
     <div class="am-teams">${esc(teamsLabel(f))}</div>
     <div class="am-meta">${f.date||""}${f.time?" · "+f.time:""} ${f.venue?"· "+esc(f.venue):""} ${f.competition?"· "+esc(f.competition):""}</div>
     <div class="am-meta">Referee: ${esc(f.refereeName||"")} · Evaluator: ${esc(f.evaluatorName||"")} · Half length: ${f.halfLength||35} min</div>
+    ${editingEvaluationId ? `<div class="badge" style="background:var(--danger);color:#fff;margin-top:5px;display:inline-block;">EDITING MODE</div>` : ""}
   `;
 }
 
-/* ===================== TIMER ===================== */
 let timerSeconds = 0;
 let timerInterval = null;
 let timerRunning = false;
@@ -435,10 +430,12 @@ function updateTimerDisplay(){
 function tick(){ timerSeconds++; updateTimerDisplay(); }
 
 document.getElementById("startPauseBtn").addEventListener("click", () => {
-  if (matchEnded || !activeFixtureId) return;
+  if (matchEnded) return;
   if (timerRunning){
     clearInterval(timerInterval); timerRunning = false;
     document.getElementById("startPauseBtn").textContent = "Start";
+    document.getElementById("endHalfBtn").disabled = true;
+    setEventButtonsEnabled(false);
   } else {
     timerInterval = setInterval(tick, 1000); timerRunning = true;
     document.getElementById("startPauseBtn").textContent = "Pause";
@@ -503,7 +500,6 @@ function setEventButtonsEnabled(on){
   );
 }
 
-/* ===================== EVENT BUTTONS ===================== */
 const EVENT_BTN_MAP = {btnPenalty:"Penalty", btnFreeKick:"Free Kick", btnScrum:"Scrum", btnLineout:"Line-out"};
 Object.keys(EVENT_BTN_MAP).forEach(id => {
   document.getElementById(id).addEventListener("click", () => {
@@ -514,7 +510,6 @@ Object.keys(EVENT_BTN_MAP).forEach(id => {
   });
 });
 
-// Advantage button — show outcome picker
 document.getElementById("btnAdvantage").addEventListener("click", () => {
   document.getElementById("reasonPicker").style.display = "none";
   selectedReasonTeam = "";
@@ -536,7 +531,6 @@ document.getElementById("advantageCancelBtn").addEventListener("click", () => {
   document.getElementById("advantagePicker").style.display = "none";
 });
 
-/* ===================== PENALTY / FREE KICK PICKER ===================== */
 function openReasonPicker(type){
   const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
   document.getElementById("reasonPickerTitle").textContent = `${type} — Select Team & Reason`;
@@ -700,12 +694,12 @@ function resetTimerState(){
   document.getElementById("postGamePanel").style.display = "none";
   document.getElementById("reasonPicker").style.display = "none";
   document.getElementById("advantagePicker").style.display = "none";
+  document.getElementById("finalAssessmentTitle").textContent = "Final Assessment";
   setEventButtonsEnabled(false);
   updateTimerDisplay();
   renderTimeline();
 }
 
-/* ===================== REFEREE SELECT ===================== */
 function refreshFixRefSelect(){
   const active = Object.entries(referees).filter(([id,r]) => r.active !== false);
   document.getElementById("fixRefSelect").innerHTML = active.length
@@ -713,9 +707,8 @@ function refreshFixRefSelect(){
     : `<option value="">Add a referee first</option>`;
 }
 
-/* ===================== SUBMIT ASSESSMENT ===================== */
 document.getElementById("submitEvalBtn").addEventListener("click", () => {
-  if (!currentFixture){ showToast("No active match — start one from Schedule"); return; }
+  if (!currentFixture){ showToast("No active match loaded."); return; }
   const overall = computeOverall(currentScores);
   const entry = {
     refereeId: currentFixture.refereeId,
@@ -732,23 +725,33 @@ document.getElementById("submitEvalBtn").addEventListener("click", () => {
     generalNotes: document.getElementById("evalGeneralNotes").value.trim(),
     half1Duration, half2Duration, halfLength: currentFixture.halfLength || 35,
     events: [...timelineEvents],
-    timestamp: Date.now()
+    timestamp: currentFixture.timestamp || Date.now()
   };
-  evaluationsRef.push(entry).then(ref => {
-    if (activeFixtureId){
-      fixturesRef.child(activeFixtureId).update({status:"completed", evaluationId: ref.key});
-    }
-    showToast("Match assessment submitted");
+
+  const handleSuccess = () => {
+    showToast(editingEvaluationId ? "Assessment updated successfully" : "Match assessment submitted");
     document.getElementById("evalGeneralNotes").value = "";
+    editingEvaluationId = null;
     activeFixtureId = null;
     currentFixture = null;
     renderActiveMatchBanner();
+    currentScores = {};
     resetTimerState();
     buildCriteriaInputs();
-  }).catch(err => showToast("Error: " + err.message));
+  };
+
+  if (editingEvaluationId) {
+    evaluationsRef.child(editingEvaluationId).set(entry).then(handleSuccess).catch(err => showToast("Error: " + err.message));
+  } else {
+    evaluationsRef.push(entry).then(ref => {
+      if (activeFixtureId){
+        fixturesRef.child(activeFixtureId).update({status:"completed", evaluationId: ref.key});
+      }
+      handleSuccess();
+    }).catch(err => showToast("Error: " + err.message));
+  }
 });
 
-/* ===================== SCHEDULE / FIXTURES ===================== */
 function resetScheduleForm(){
   editingFixtureId = null;
   document.getElementById("scheduleFormTitle").textContent = "Schedule a Game";
@@ -819,7 +822,8 @@ function renderFixtureGroups(){
             <div class="fline"><span>Evaluator: ${esc(f.evaluatorName||"")} · Half: ${f.halfLength||35} min</span></div>
             <div class="fixture-actions">
               ${f.status !== "completed" ? `<button class="secondary small" onclick="startAssessmentFromFixture('${f.id}')">${f.status==="live"?"Continue Assessment":"Start Assessment"}</button>` : ""}
-              <button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>
+              ${f.status === "completed" && f.evaluationId ? `<button class="secondary small" onclick="editCompletedAssessment('${f.evaluationId}')">Edit Assessment</button>` : ""}
+              <button class="secondary small" onclick="editFixture('${f.id}')">Edit Info</button>
               <button class="secondary small danger" onclick="deleteFixture('${f.id}')">Delete</button>
             </div>
           </div>`).join("")}
@@ -832,6 +836,7 @@ function startAssessmentFromFixture(fixId){
   document.querySelector('.tab-btn[data-tab="notation"]').click();
   resetTimerState();
   activeFixtureId = fixId;
+  editingEvaluationId = null;
   currentFixture = {...f};
   halfLengthMinutes = f.halfLength || 35;
   renderActiveMatchBanner();
@@ -839,6 +844,53 @@ function startAssessmentFromFixture(fixId){
   document.getElementById("startPauseBtn").disabled = false;
   fixturesRef.child(fixId).update({status:"live"});
   showToast("Match loaded — start the timer when ready");
+}
+
+function editCompletedAssessment(evalId) {
+  const ev = evaluations[evalId]; if (!ev) return;
+  document.querySelector('.tab-btn[data-tab="notation"]').click();
+  resetTimerState();
+  
+  editingEvaluationId = evalId;
+  activeFixtureId = ev.fixtureId || null;
+  currentFixture = {
+    date: ev.matchDate,
+    time: "",
+    venue: ev.venue,
+    competition: ev.competition,
+    team1: ev.team1,
+    team2: ev.team2,
+    refereeId: ev.refereeId,
+    refereeName: ev.refereeName,
+    evaluatorName: ev.evaluatorName,
+    halfLength: ev.halfLength,
+    timestamp: ev.timestamp
+  };
+  
+  halfLengthMinutes = ev.halfLength || 35;
+  half1Duration = ev.half1Duration || 0;
+  half2Duration = ev.half2Duration || 0;
+  timelineEvents = ev.events || [];
+  
+  if (timelineEvents.length > 0) {
+    evtCounter = Math.max(...timelineEvents.map(e => e.id)) || 0;
+  }
+  
+  currentScores = {...ev.scores};
+  document.getElementById("evalGeneralNotes").value = ev.generalNotes || "";
+  
+  renderActiveMatchBanner();
+  buildCriteriaInputs();
+  renderTimeline();
+  
+  matchEnded = true;
+  document.getElementById("halfBadge").textContent = "Full Time (Editing)";
+  document.getElementById("startPauseBtn").disabled = true;
+  document.getElementById("finalAssessmentTitle").textContent = "Final Assessment (Modify Mode)";
+  
+  renderFinalStats();
+  document.getElementById("postGamePanel").style.display = "block";
+  showToast("Past evaluation loaded. Modify criteria or actions below.");
 }
 
 function editFixture(fixId){
@@ -877,7 +929,6 @@ function deleteFixture(fixId){
   });
 }
 
-/* ===================== REFEREES ===================== */
 document.getElementById("addRefBtn").addEventListener("click", () => {
   const name = document.getElementById("newRefName").value.trim();
   if (!name){ showToast("Enter a name"); return; }
@@ -1019,15 +1070,18 @@ function showMatchDetail(evalId){
       <div class="sbox"><div class="sval">${stats.totalNDs}</div><div class="slabel">ND's</div></div>
       <div class="sbox"><div class="sval">${stats.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
     </div>
-    ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>`:""}
-    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>`;
+    ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem; margin-bottom: 12px;">${esc(e.generalNotes)}</div>`:""}
+    <div class="btnrow">
+      <button class="primary" id="editCompletedAssessmentBtn">Edit Evaluation Data</button>
+      <button class="secondary" id="exportXlsxBtn">Export to Excel</button>
+    </div>`;
   panel.replaceWith(wrap);
   wrap.id = "profilePanel";
   document.getElementById("backFromMatch").addEventListener("click", () => showRefereeProfile(e.refereeId));
   document.getElementById("exportXlsxBtn").addEventListener("click", () => exportMatchExcel(e));
+  document.getElementById("editCompletedAssessmentBtn").addEventListener("click", () => editCompletedAssessment(evalId));
 }
 
-/* ===================== DASHBOARD ===================== */
 function renderDashboard(){
   const leaderboard = document.getElementById("leaderboardList");
   const recent = document.getElementById("recentList");
@@ -1040,10 +1094,10 @@ function renderDashboard(){
         <div class="info"><div class="name">${esc(r.ref.name)}</div><div class="sub">${r.stats.count} match${r.stats.count===1?"":"es"}</div></div>
         <div class="score-pill" style="color:${scoreColor(r.stats.avg)};">${r.stats.avg.toFixed(1)}</div>
       </div>`).join("");
-  const allEvals = Object.values(evaluations).sort((a,b)=>b.timestamp-a.timestamp).slice(0,15);
+  const allEvals = Object.keys(evaluations).map(id => ({id, ...evaluations[id]})).sort((a,b)=>b.timestamp-a.timestamp).slice(0,15);
   recent.innerHTML = allEvals.length === 0 ? `<div class="empty">No assessments yet.</div>` :
     allEvals.map(e => `
-      <div class="eval-item">
+      <div class="eval-item" onclick="loadAssessmentFromDashboard('${e.id}', '${e.refereeId}')">
         <div class="eline"><span>${esc(e.refereeName)} ${e.matchDate?"· "+e.matchDate:""}</span>
           <span style="color:${scoreColor(e.overall)};font-weight:700;">${e.overall.toFixed(1)}</span></div>
         <div>${esc(teamsLabel(e)||e.competition||"")}</div>
@@ -1051,7 +1105,12 @@ function renderDashboard(){
       </div>`).join("");
 }
 
-/* ===================== EXPORT EXCEL ===================== */
+function loadAssessmentFromDashboard(evalId, refId) {
+  document.querySelector('.tab-btn[data-tab="referees"]').click();
+  showRefereeProfile(refId);
+  showMatchDetail(evalId);
+}
+
 function exportMatchExcel(e){
   const s = matchNotationStats(e.events || []);
   const wb = XLSX.utils.book_new();
@@ -1078,7 +1137,6 @@ function exportMatchExcel(e){
   showToast("Excel datasheet downloaded");
 }
 
-/* ===================== HELPERS ===================== */
 function esc(str){
   if (!str) return "";
   const div = document.createElement("div");
@@ -1091,7 +1149,6 @@ function showToast(msg){
   setTimeout(() => t.classList.remove("show"), 2200);
 }
 
-/* ===================== FIREBASE LISTENERS ===================== */
 refereesRef.on("value", snap => {
   referees = snap.val() || {};
   refreshFixRefSelect();
@@ -1107,7 +1164,6 @@ fixturesRef.on("value", snap => {
   if (document.getElementById("tab-schedule").style.display !== "none") renderFixtureGroups();
 });
 
-/* ===================== INIT ===================== */
 buildCriteriaInputs();
 updateTimerDisplay();
 setEventButtonsEnabled(false);
