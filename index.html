@@ -149,7 +149,7 @@
 
 <header>
   <h1>🏉 Referee Assessment <span class="badge">INTERNAL</span><span id="connDot" class="conn-dot"></span></h1>
-  <nav>
+  <nav id="mainNav">
     <button class="tab-btn active" data-tab="notation">Match Notation</button>
     <button class="tab-btn" data-tab="schedule">Schedule</button>
     <button class="tab-btn" data-tab="referees">Referees</button>
@@ -314,9 +314,23 @@ const refereesRef = db.ref(`${ROOT}/referees`);
 const evaluationsRef = db.ref(`${ROOT}/evaluations`);
 const fixturesRef = db.ref(`${ROOT}/fixtures`);
 
+/* Server Time Skew Tracking Baseline */
+let serverTimeOffset = 0;
+db.ref(".info/serverTimeOffset").on("value", snap => {
+  serverTimeOffset = snap.val() || 0;
+});
+
 db.ref(".info/connected").on("value", snap => {
   document.getElementById("connDot").classList.toggle("ok", snap.val() === true);
 });
+
+/* ===================== ROLE CHECK (SPECIAL ASSESSOR LINK) ===================== */
+const urlParams = new URLSearchParams(window.location.search);
+const isAssessorOnly = urlParams.get('role') === 'assessor';
+
+if (isAssessorOnly) {
+  document.getElementById("mainNav").style.display = "none";
+}
 
 /* ===================== CRITERIA (Alphabetical order) ===================== */
 const CRITERIA = [
@@ -330,8 +344,22 @@ const CRITERIA = [
   {key:"spaceOffside",    label:"Space & Offside",              desc:"Management of offside lines and use of space"}
 ];
 
-const PENALTY_REASONS = ["Offside","Not Rolling Away","T/A not releasing","Dangerous Tackle","Holding on","Foul Play","Obstruction","IFOK (Infront of Kicker)","Ruck Infringement","Scrum Infringement","Lineout Infringement","Technical","Other"];
-const FREEKICK_REASONS = ["Scrum Infringement","Lineout Infringement","Mark","Quick Throw-in Error","Other"];
+/* Updated Penalties Array */
+const PENALTY_REASONS = [
+  "Offside",
+  "Not Rolling Away",
+  "Dangerous Tackle",
+  "Holding",
+  "Foul Play",
+  "Obstruction",
+  "IFOK (Infront of Kicker)",
+  "Ruck Infringement",
+  "Scrum Infringement",
+  "Lineout Infringement",
+  "Technical",
+  "Other"
+];
+const FREEKICK_REASONS = ["Scrum Infringement","Lineout Infringement","Accidental Offside","Mark","Quick Throw-in Error","Short-arm (Technical)","Other"];
 
 let referees = {};
 let evaluations = {};
@@ -394,7 +422,11 @@ function renderActiveMatchBanner(){
   const el = document.getElementById("activeMatchBanner");
   if (!currentFixture){
     el.className = "active-match none";
-    el.innerHTML = `No match selected. Go to <b>Schedule</b> and tap <b>Start Assessment</b> on a fixture.`;
+    if (isAssessorOnly) {
+      el.innerHTML = `No match selected. Wait for an admin to schedule, or you can temporarily check the <b>Live Fixtures Monitor</b> if running.`;
+    } else {
+      el.innerHTML = `No match selected. Go to <b>Schedule</b> and tap <b>Start Assessment</b> on a fixture.`;
+    }
     return;
   }
   const f = currentFixture;
@@ -507,8 +539,13 @@ Object.keys(EVENT_BTN_MAP).forEach(id => {
   document.getElementById(id).addEventListener("click", () => {
     const type = EVENT_BTN_MAP[id];
     document.getElementById("advantagePicker").style.display = "none";
-    if (type === "Penalty" || type === "Free Kick") openReasonPicker(type);
-    else logEvent(type);
+    if (type === "Penalty" || type === "Free Kick") {
+      openReasonPicker(type);
+    } else if (type === "Scrum" || type === "Line-out") {
+      openTeamThrowInPicker(type);
+    } else {
+      logEvent(type);
+    }
   });
 });
 
@@ -533,6 +570,43 @@ document.getElementById("btnAdvNotPlayed").addEventListener("click", () => {
 document.getElementById("advantageCancelBtn").addEventListener("click", () => {
   document.getElementById("advantagePicker").style.display = "none";
 });
+
+/* ===================== SCRUM / LINEOUT THROW IN PICKER ===================== */
+function openTeamThrowInPicker(type) {
+  document.getElementById("advantagePicker").style.display = "none";
+  document.getElementById("reasonPickerTitle").textContent = `${type} — Who throws in?`;
+  const t1 = currentFixture?.team1 || "Team 1";
+  const t2 = currentFixture?.team2 || "Team 2";
+  selectedReasonTeam = "";
+
+  const teamContainer = document.getElementById("reasonTeamContainer");
+  teamContainer.innerHTML = `
+    <label style="text-align:center;margin-bottom:4px;">Select Throwing Team</label>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button type="button" id="pickerTeam1Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
+      <button type="button" id="pickerTeam2Btn" class="secondary" style="flex:1;min-height:42px;font-weight:600;"></button>
+    </div>
+  `;
+  const btn1 = document.getElementById("pickerTeam1Btn");
+  const btn2 = document.getElementById("pickerTeam2Btn");
+  btn1.textContent = t1;
+  btn2.textContent = t2;
+  
+  btn1.addEventListener("click", () => {
+    selectedReasonTeam = t1;
+    logEvent(type, "Throw-in");
+  });
+  btn2.addEventListener("click", () => {
+    selectedReasonTeam = t2;
+    logEvent(type, "Throw-in");
+  });
+
+  const grid = document.getElementById("reasonGrid");
+  grid.innerHTML = ""; // Clear reasons grid for simple layout
+
+  document.getElementById("reasonPicker").style.display = "block";
+  document.getElementById("reasonPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
+}
 
 /* ===================== PENALTY / FREE KICK PICKER ===================== */
 function openReasonPicker(type){
@@ -626,16 +700,20 @@ function renderTimeline(){
         <span class="rm-x" style="color:var(--danger);cursor:pointer;font-weight:700;" onclick="removeEvent(${ev.id})">&times;</span>
       </div>
       <div class="timeline-fields">
-        ${(ev.type==="Penalty"||ev.type==="Free Kick") ? `
+        ${ev.type==="Penalty" ? `
         <select onchange="updateEventField(${ev.id},'reason',this.value)">
-          ${(ev.type==="Penalty"?PENALTY_REASONS:FREEKICK_REASONS).map(r => `<option ${ev.reason===r?"selected":""}>${esc(r)}</option>`).join("")}
+          ${PENALTY_REASONS.map(r => `<option ${ev.reason===r?"selected":""}>${esc(r)}</option>`).join("")}
+        </select>` : ""}
+        ${ev.type==="Free Kick" ? `
+        <select onchange="updateEventField(${ev.id},'reason',this.value)">
+          ${FREEKICK_REASONS.map(r => `<option ${ev.reason===r?"selected":""}>${esc(r)}</option>`).join("")}
         </select>` : ""}
         ${ev.type==="Advantage" ? `
         <select onchange="updateEventField(${ev.id},'reason',this.value)">
           <option value="Played Out" ${ev.reason==="Played Out"?"selected":""}>Played Out</option>
           <option value="Did Not Play Out" ${ev.reason==="Did Not Play Out"?"selected":""}>Did Not Play Out</option>
         </select>` : ""}
-        ${(ev.type==="Penalty"||ev.type==="Free Kick") ? `
+        ${(ev.type==="Penalty"||ev.type==="Free Kick"||ev.type==="Scrum"||ev.type==="Line-out") ? `
         <select onchange="updateEventField(${ev.id},'team',this.value)">
           <option value="" ${ev.team===""?"selected":""}>Team</option>
           <option value="${esc(t1)}" ${ev.team===t1?"selected":""}>${esc(t1)}</option>
@@ -730,7 +808,7 @@ document.getElementById("submitEvalBtn").addEventListener("click", () => {
     generalNotes: document.getElementById("evalGeneralNotes").value.trim(),
     half1Duration, half2Duration, halfLength: currentFixture.halfLength || 35,
     events: [...timelineEvents],
-    timestamp: Date.now()
+    timestamp: Date.now() + serverTimeOffset
   };
   evaluationsRef.push(entry).then(ref => {
     if (activeFixtureId){
@@ -784,7 +862,7 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
   } else {
     fixtureData.status = "upcoming";
     fixtureData.evaluationId = null;
-    fixtureData.createdAt = Date.now();
+    fixtureData.createdAt = Date.now() + serverTimeOffset;
     fixturesRef.push(fixtureData).then(() => {
       showToast("Game scheduled"); resetScheduleForm();
     }).catch(err => showToast("Error: " + err.message));
@@ -817,8 +895,10 @@ function renderFixtureGroups(){
             <div class="fline"><span>Evaluator: ${esc(f.evaluatorName||"")} · Half: ${f.halfLength||35} min</span></div>
             <div class="fixture-actions">
               ${f.status !== "completed" ? `<button class="secondary small" onclick="startAssessmentFromFixture('${f.id}')">${f.status==="live"?"Continue Assessment":"Start Assessment"}</button>` : ""}
-              <button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>
-              <button class="secondary small danger" onclick="deleteFixture('${f.id}')">Delete</button>
+              ${!isAssessorOnly ? `
+                <button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>
+                <button class="secondary small danger" onclick="deleteFixture('${f.id}')">Delete</button>
+              ` : ""}
             </div>
           </div>`).join("")}
       </div>
@@ -827,7 +907,9 @@ function renderFixtureGroups(){
 
 function startAssessmentFromFixture(fixId){
   const f = fixtures[fixId]; if (!f) return;
-  document.querySelector('.tab-btn[data-tab="notation"]').click();
+  if (!isAssessorOnly) {
+    document.querySelector('.tab-btn[data-tab="notation"]').click();
+  }
   resetTimerState();
   activeFixtureId = fixId;
   currentFixture = {...f};
@@ -881,7 +963,7 @@ document.getElementById("addRefBtn").addEventListener("click", () => {
   if (!name){ showToast("Enter a name"); return; }
   const grade = document.getElementById("newRefGrade").value.trim();
   const club = document.getElementById("newRefClub").value.trim();
-  refereesRef.push({name, grade, club, active:true, createdAt:Date.now()}).then(() => {
+  refereesRef.push({name, grade, club, active:true, createdAt:(Date.now() + serverTimeOffset)}).then(() => {
     document.getElementById("newRefName").value = "";
     document.getElementById("newRefGrade").value = "";
     document.getElementById("newRefClub").value = "";
@@ -1018,26 +1100,11 @@ function showMatchDetail(evalId){
       <div class="sbox"><div class="sval">${stats.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
     </div>
     ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>`:""}
-    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>
-    <button class="secondary danger" id="deleteEvalBtn" style="margin-top:8px;width:100%;">Delete Match</button>`;
+    <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>`;
   panel.replaceWith(wrap);
   wrap.id = "profilePanel";
   document.getElementById("backFromMatch").addEventListener("click", () => showRefereeProfile(e.refereeId));
   document.getElementById("exportXlsxBtn").addEventListener("click", () => exportMatchExcel(e));
-  document.getElementById("deleteEvalBtn").addEventListener("click", () => deleteEvaluation(evalId));
-}
-
-function deleteEvaluation(evalId){
-  const e = evaluations[evalId]; if (!e) return;
-  if (!confirm(`Are you sure you want to completely delete this match assessment for ${esc(teamsLabel(e))}?`)) return;
-  const refId = e.refereeId;
-  evaluationsRef.child(evalId).remove().then(() => {
-    if (e.fixtureId) {
-      fixturesRef.child(e.fixtureId).remove();
-    }
-    showToast("Match entry deleted successfully");
-    showRefereeProfile(refId);
-  }).catch(err => showToast("Error: " + err.message));
 }
 
 /* ===================== DASHBOARD ===================== */
@@ -1108,7 +1175,7 @@ function showToast(msg){
 refereesRef.on("value", snap => {
   referees = snap.val() || {};
   refreshFixRefSelect();
-  if (document.getElementById("refereesListView").style.display !== "none") renderRefereesList();
+  if (!isAssessorOnly && document.getElementById("refereesListView").style.display !== "none") renderRefereesList();
   renderDashboard();
 });
 evaluationsRef.on("value", snap => {
@@ -1117,7 +1184,7 @@ evaluationsRef.on("value", snap => {
 });
 fixturesRef.on("value", snap => {
   fixtures = snap.val() || {};
-  if (document.getElementById("tab-schedule").style.display !== "none") renderFixtureGroups();
+  renderFixtureGroups();
 });
 
 /* ===================== INIT ===================== */
