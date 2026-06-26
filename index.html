@@ -332,7 +332,7 @@ if (isAssessorOnly) {
   document.getElementById("mainNav").style.display = "none";
 }
 
-/* ===================== CRITERIA (Alphabetical order) ===================== */
+/* ===================== CRITERIA ===================== */
 const CRITERIA = [
   {key:"advantage",       label:"Advantage",                    desc:"Allowing advantage, keeping the game flowing"},
   {key:"breakdown",       label:"Breakdown",                    desc:"Management of rucks, mauls and breakdown situations"},
@@ -423,7 +423,7 @@ function renderActiveMatchBanner(){
   if (!currentFixture){
     el.className = "active-match none";
     if (isAssessorOnly) {
-      el.innerHTML = `No match selected. Wait for an admin to schedule, or you can temporarily check the <b>Live Fixtures Monitor</b> if running.`;
+      el.innerHTML = `No match selected. Wait for an admin to schedule, or you can temporarily check the <b>Schedule</b> if running.`;
     } else {
       el.innerHTML = `No match selected. Go to <b>Schedule</b> and tap <b>Start Assessment</b> on a fixture.`;
     }
@@ -438,7 +438,7 @@ function renderActiveMatchBanner(){
   `;
 }
 
-/* ===================== TIMER ===================== */
+/* ===================== TIMER (MODIFIED FOR LOCKED PHONE/INACTIVE TAB) ===================== */
 let timerSeconds = 0;
 let timerInterval = null;
 let timerRunning = false;
@@ -451,26 +451,47 @@ let activeFixtureId = null;
 let evtCounter = 0;
 let halfLengthMinutes = 35;
 
+// Variables to handle exact timestamps and avoid interval throttling
+let timerStartTime = 0;
+let accumulatedSeconds = 0;
+
 function formatTime(s){
   const m = Math.floor(s/60).toString().padStart(2,"0");
   const sec = (s%60).toString().padStart(2,"0");
   return `${m}:${sec}`;
 }
+
 function updateTimerDisplay(){
   const disp = document.getElementById("timerDisplay");
   disp.textContent = formatTime(timerSeconds);
   const limit = (Number(halfLengthMinutes)||35) * 60;
   disp.classList.toggle("over", timerSeconds >= limit);
 }
-function tick(){ timerSeconds++; updateTimerDisplay(); }
+
+function tick(){
+  if (timerRunning) {
+    // Calculates actual time passed rather than counting JS ticks
+    timerSeconds = accumulatedSeconds + Math.floor((Date.now() - timerStartTime) / 1000);
+  }
+  updateTimerDisplay();
+}
 
 document.getElementById("startPauseBtn").addEventListener("click", () => {
   if (matchEnded || !activeFixtureId) return;
+  
   if (timerRunning){
-    clearInterval(timerInterval); timerRunning = false;
+    // Pausing
+    clearInterval(timerInterval); 
+    timerRunning = false;
+    accumulatedSeconds += Math.floor((Date.now() - timerStartTime) / 1000);
+    timerSeconds = accumulatedSeconds; // Sets the exact fixed second before pausing
     document.getElementById("startPauseBtn").textContent = "Start";
   } else {
-    timerInterval = setInterval(tick, 1000); timerRunning = true;
+    // Starting
+    timerStartTime = Date.now();
+    // 200ms is used for UI so the seconds snap precisely and look smooth on screen
+    timerInterval = setInterval(tick, 200); 
+    timerRunning = true;
     document.getElementById("startPauseBtn").textContent = "Pause";
     document.getElementById("endHalfBtn").disabled = false;
     document.getElementById("endGameBtn").disabled = false;
@@ -480,9 +501,18 @@ document.getElementById("startPauseBtn").addEventListener("click", () => {
 
 document.getElementById("endHalfBtn").addEventListener("click", () => {
   if (!confirm(`End Half ${currentHalf}? The timer will stop.`)) return;
-  clearInterval(timerInterval); timerRunning = false;
+  
+  // Calculate final time before clearing interval
+  if (timerRunning) {
+    accumulatedSeconds += Math.floor((Date.now() - timerStartTime) / 1000);
+    timerSeconds = accumulatedSeconds;
+  }
+  
+  clearInterval(timerInterval); 
+  timerRunning = false;
   document.getElementById("startPauseBtn").textContent = "Start";
   setEventButtonsEnabled(false);
+  
   if (currentHalf === 1){
     half1Duration = timerSeconds;
     document.getElementById("endHalfBtn").disabled = true;
@@ -498,7 +528,9 @@ document.getElementById("startHalf2Btn").addEventListener("click", () => {
   if (!confirm("Start Half 2? The timer will reset to 00:00.")) return;
   currentHalf = 2;
   timerSeconds = 0;
+  accumulatedSeconds = 0;
   updateTimerDisplay();
+  
   document.getElementById("halfBadge").textContent = "Half 2";
   document.getElementById("startHalf2Btn").style.display = "none";
   document.getElementById("startPauseBtn").disabled = false;
@@ -512,7 +544,13 @@ document.getElementById("endGameBtn").addEventListener("click", () => {
 });
 
 function endGame(){
-  clearInterval(timerInterval); timerRunning = false; matchEnded = true;
+  if (timerRunning) {
+    accumulatedSeconds += Math.floor((Date.now() - timerStartTime) / 1000);
+    timerSeconds = accumulatedSeconds;
+  }
+  clearInterval(timerInterval); 
+  timerRunning = false; 
+  matchEnded = true;
   document.getElementById("halfBadge").textContent = "Full Time";
   document.getElementById("startPauseBtn").disabled = true;
   document.getElementById("endHalfBtn").disabled = true;
@@ -602,7 +640,7 @@ function openTeamThrowInPicker(type) {
   });
 
   const grid = document.getElementById("reasonGrid");
-  grid.innerHTML = ""; // Clear reasons grid for simple layout
+  grid.innerHTML = ""; 
 
   document.getElementById("reasonPicker").style.display = "block";
   document.getElementById("reasonPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
@@ -664,6 +702,10 @@ document.getElementById("reasonCancelBtn").addEventListener("click", () => {
 });
 
 function logEvent(type, reason){
+  if (timerRunning) {
+    timerSeconds = accumulatedSeconds + Math.floor((Date.now() - timerStartTime) / 1000);
+  }
+  
   evtCounter++;
   timelineEvents.push({
     id: evtCounter, half: currentHalf, time: timerSeconds, type, reason: reason || "",
@@ -765,6 +807,7 @@ function renderFinalStats(){
 function resetTimerState(){
   clearInterval(timerInterval);
   timerSeconds = 0; timerRunning = false; currentHalf = 1; half1Duration = 0; half2Duration = 0;
+  timerStartTime = 0; accumulatedSeconds = 0;
   matchEnded = false; timelineEvents = []; evtCounter = 0; halfLengthMinutes = 35;
   selectedReasonTeam = "";
   document.getElementById("halfBadge").textContent = "Half 1";
