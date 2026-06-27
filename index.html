@@ -191,6 +191,14 @@
         <button class="secondary" id="startHalf2Btn" style="display:none;margin-top:8px;width:100%;">Start Half 2</button>
       </div>
 
+      <div class="summary-grid" id="liveCounterGrid">
+        <div class="sbox"><div class="sval" id="lcPenalties">0</div><div class="slabel">Penalties</div></div>
+        <div class="sbox"><div class="sval" id="lcScrums">0</div><div class="slabel">Scrums</div></div>
+        <div class="sbox"><div class="sval" id="lcResets">0</div><div class="slabel">Resets</div></div>
+        <div class="sbox"><div class="sval" id="lcAdvantage">0</div><div class="slabel">Advantage</div></div>
+        <div class="sbox"><div class="sval" id="lcPlayedOut">0</div><div class="slabel">Played Out</div></div>
+      </div>
+
       <div class="event-grid">
         <button class="event-btn penalty" id="btnPenalty" disabled>Penalty</button>
         <button class="event-btn freekick" id="btnFreeKick" disabled>Free Kick</button>
@@ -285,12 +293,32 @@
           <div><label>Name</label><input type="text" id="newRefName" placeholder="Full name"></div>
           <div><label>Grade</label><input type="text" id="newRefGrade" placeholder="e.g. National Panel"></div>
         </div>
-        <label>Club / Association</label>
-        <input type="text" id="newRefClub" placeholder="e.g. Golden Lions Referees">
+        <div class="row2">
+          <div><label>Club / Association</label><input type="text" id="newRefClub" placeholder="e.g. Golden Lions Referees"></div>
+          <div><label>Province</label><input type="text" id="newRefProvince" placeholder="e.g. Western Province"></div>
+        </div>
+        <label>Tournament</label>
+        <input type="text" id="newRefTournament" placeholder="e.g. U/13 Craven Week">
         <button class="primary" id="addRefBtn">Add Referee</button>
       </div>
       <div class="panel">
         <h2>All Referees</h2>
+        <div class="row2">
+          <div><label>Filter Tournament</label><select id="filterTournament"><option value="">All</option></select></div>
+          <div><label>Filter Province</label><select id="filterProvince"><option value="">All</option></select></div>
+        </div>
+        <div class="row2">
+          <div><label>Filter Grade</label><select id="filterGrade"><option value="">All</option></select></div>
+          <div><label>Sort By</label>
+            <select id="sortReferees">
+              <option value="name">Name</option>
+              <option value="grade">Grade</option>
+              <option value="province">Province</option>
+              <option value="tournament">Tournament</option>
+              <option value="avg">Average Score</option>
+            </select>
+          </div>
+        </div>
         <div id="refereesList"><div class="empty">No referees yet — add one above.</div></div>
       </div>
     </div>
@@ -591,6 +619,7 @@ function renderLiveMatch(){
   updateTimerDisplayFromState();
   restartLocalTick();
   renderTimeline();
+  renderLiveCounters();
 
   if (matchEnded){
     if (!postGameShown){
@@ -849,6 +878,15 @@ function matchNotationStats(events){
           totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors, totalNDs, totalHIDs};
 }
 
+function renderLiveCounters(){
+  const s = matchNotationStats(eventsArray());
+  document.getElementById("lcPenalties").textContent = s.totalPenalties;
+  document.getElementById("lcScrums").textContent = s.totalScrums;
+  document.getElementById("lcResets").textContent = s.totalScrumResets;
+  document.getElementById("lcAdvantage").textContent = s.totalAdvantages;
+  document.getElementById("lcPlayedOut").textContent = s.totalAdvPlayedOut;
+}
+
 function renderFinalStats(){
   const s = matchNotationStats(eventsArray());
   document.getElementById("finalStatsGrid").innerHTML = `
@@ -885,6 +923,7 @@ function resetTimerState(){
   document.getElementById("timerDisplay").textContent = "00:00";
   document.getElementById("timerDisplay").classList.remove("over");
   renderTimeline();
+  renderLiveCounters();
 }
 
 /* ===================== REFEREE SELECT ===================== */
@@ -1068,34 +1107,92 @@ document.getElementById("addRefBtn").addEventListener("click", () => {
   if (!name){ showToast("Enter a name"); return; }
   const grade = document.getElementById("newRefGrade").value.trim();
   const club = document.getElementById("newRefClub").value.trim();
-  refereesRef.push({name, grade, club, active:true, createdAt: firebase.database.ServerValue.TIMESTAMP}).then(() => {
+  const province = document.getElementById("newRefProvince").value.trim();
+  const tournament = document.getElementById("newRefTournament").value.trim();
+  refereesRef.push({name, grade, club, province, tournament, active:true, createdAt: firebase.database.ServerValue.TIMESTAMP}).then(() => {
     document.getElementById("newRefName").value = "";
     document.getElementById("newRefGrade").value = "";
     document.getElementById("newRefClub").value = "";
+    document.getElementById("newRefProvince").value = "";
+    document.getElementById("newRefTournament").value = "";
     showToast("Referee added");
   }).catch(err => showToast("Error: " + err.message));
+});
+
+function refreshRefereeFilterSelects(){
+  const tournaments = new Set(), provinces = new Set(), grades = new Set();
+  Object.values(referees).forEach(r => {
+    if (r.tournament) tournaments.add(r.tournament);
+    if (r.province) provinces.add(r.province);
+    if (r.grade) grades.add(r.grade);
+  });
+  const fillSelect = (id, values) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">All</option>` + [...values].sort().map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    if ([...values].includes(cur)) sel.value = cur;
+  };
+  fillSelect("filterTournament", tournaments);
+  fillSelect("filterProvince", provinces);
+  fillSelect("filterGrade", grades);
+}
+["filterTournament","filterProvince","filterGrade","sortReferees"].forEach(id => {
+  document.getElementById(id).addEventListener("change", () => renderRefereesList());
 });
 
 function showRefereesList(){
   document.getElementById("refereesListView").style.display = "block";
   document.getElementById("refereeProfileView").style.display = "none";
+  refreshRefereeFilterSelects();
   renderRefereesList();
 }
 
 function renderRefereesList(){
   const list = document.getElementById("refereesList");
-  const ids = Object.keys(referees);
-  if (ids.length === 0){ list.innerHTML = `<div class="empty">No referees yet — add one above.</div>`; return; }
-  list.innerHTML = ids.sort((a,b)=>referees[a].name.localeCompare(referees[b].name)).map(id => {
+  const fT = document.getElementById("filterTournament")?.value || "";
+  const fP = document.getElementById("filterProvince")?.value || "";
+  const fG = document.getElementById("filterGrade")?.value || "";
+  const sortBy = document.getElementById("sortReferees")?.value || "name";
+
+  let ids = Object.keys(referees).filter(id => {
+    const r = referees[id];
+    if (fT && r.tournament !== fT) return false;
+    if (fP && r.province !== fP) return false;
+    if (fG && r.grade !== fG) return false;
+    return true;
+  });
+
+  if (ids.length === 0){
+    list.innerHTML = Object.keys(referees).length === 0
+      ? `<div class="empty">No referees yet — add one above.</div>`
+      : `<div class="empty">No referees match the selected filters.</div>`;
+    return;
+  }
+
+  ids.sort((a,b) => {
+    const ra = referees[a], rb = referees[b];
+    switch(sortBy){
+      case "grade": return (ra.grade||"").localeCompare(rb.grade||"") || ra.name.localeCompare(rb.name);
+      case "province": return (ra.province||"").localeCompare(rb.province||"") || ra.name.localeCompare(rb.name);
+      case "tournament": return (ra.tournament||"").localeCompare(rb.tournament||"") || ra.name.localeCompare(rb.name);
+      case "avg": return refereeStats(b).avg - refereeStats(a).avg;
+      default: return ra.name.localeCompare(rb.name);
+    }
+  });
+
+  list.innerHTML = ids.map(id => {
     const r = referees[id]; const stats = refereeStats(id);
+    const metaParts = [r.grade, r.club, r.province, r.tournament].filter(Boolean).map(esc);
     return `<div class="ref-card ${r.active===false?"inactive":""}" data-id="${id}">
         <div><div class="name">${esc(r.name)}</div>
-        <div class="meta">${esc(r.grade||"")}${r.club?" · "+esc(r.club):""} ${r.active===false?"· Inactive":""}</div></div>
+        <div class="meta">${metaParts.join(" · ")} ${r.active===false?"· Inactive":""}</div></div>
         <div class="score-pill">${stats.count>0?stats.avg.toFixed(1):"—"}</div>
       </div>`;
   }).join("");
   list.querySelectorAll(".ref-card").forEach(card => card.addEventListener("click", () => showRefereeProfile(card.dataset.id)));
 }
+
 
 function refereeStats(refId){
   const evals = Object.entries(evaluations).filter(([id,e]) => e.refereeId === refId).map(([id,e])=>({id,...e}));
@@ -1115,7 +1212,7 @@ function showRefereeProfile(refId){
   const panel = document.getElementById("profilePanel");
   panel.innerHTML = `
     <h2>${esc(r.name)}</h2>
-    <div style="color:var(--text-dim);font-size:.85rem;margin-bottom:10px;">${esc(r.grade||"No grade set")}${r.club?" · "+esc(r.club):""}</div>
+    <div style="color:var(--text-dim);font-size:.85rem;margin-bottom:10px;">${[r.grade||"No grade set", r.club, r.province, r.tournament].filter(Boolean).map(esc).join(" · ")}</div>
     <div class="overall-box"><span>Average Score (${stats.count} match${stats.count===1?"":"es"})</span><span class="num">${stats.count?stats.avg.toFixed(1):"—"}</span></div>
     <div id="profileBars" style="margin:14px 0;"></div>
     <div class="btnrow">
@@ -1159,6 +1256,8 @@ function showRefereeEditMode(refId){
     <label>Name</label><input type="text" id="editRefName" value="${esc(r.name)}">
     <label>Grade</label><input type="text" id="editRefGrade" value="${esc(r.grade||"")}">
     <label>Club / Association</label><input type="text" id="editRefClub" value="${esc(r.club||"")}">
+    <label>Province</label><input type="text" id="editRefProvince" value="${esc(r.province||"")}">
+    <label>Tournament</label><input type="text" id="editRefTournament" value="${esc(r.tournament||"")}">
     <div class="btnrow" style="margin-top:14px;">
       <button class="primary" id="saveRefEditBtn">Save Changes</button>
       <button class="secondary" id="cancelRefEditBtn">Cancel</button>
@@ -1168,7 +1267,9 @@ function showRefereeEditMode(refId){
     if (!name){ showToast("Enter a name"); return; }
     const grade = document.getElementById("editRefGrade").value.trim();
     const club = document.getElementById("editRefClub").value.trim();
-    refereesRef.child(refId).update({name, grade, club}).then(() => {
+    const province = document.getElementById("editRefProvince").value.trim();
+    const tournament = document.getElementById("editRefTournament").value.trim();
+    refereesRef.child(refId).update({name, grade, club, province, tournament}).then(() => {
       showToast("Referee details updated");
       Object.entries(fixtures).forEach(([fId, f]) => {
         if (f.refereeId === refId && f.refereeName !== name)
@@ -1295,7 +1396,10 @@ function showToast(msg){
 refereesRef.on("value", snap => {
   referees = snap.val() || {};
   refreshFixRefSelect();
-  if (document.getElementById("refereesListView").style.display !== "none") renderRefereesList();
+  if (document.getElementById("refereesListView").style.display !== "none"){
+    refreshRefereeFilterSelects();
+    renderRefereesList();
+  }
   renderDashboard();
 });
 evaluationsRef.on("value", snap => {
