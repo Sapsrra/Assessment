@@ -960,12 +960,13 @@ function refreshFixRefSelect(){
 /* ===================== SUBMIT ASSESSMENT ===================== */
 document.getElementById("submitEvalBtn").addEventListener("click", () => {
   if (!currentFixture || !liveState){ showToast("No active match — start one from Schedule"); return; }
-  const overall = computeOverall(currentScores);
   const evaluatorName = document.getElementById("evalEvaluatorInput").value.trim();
+  if (!evaluatorName){ showToast("Enter the assessor's name before submitting"); document.getElementById("evalEvaluatorInput").focus(); return; }
+  const overall = computeOverall(currentScores);
   const entry = {
     refereeId: currentFixture.refereeId,
     refereeName: currentFixture.refereeName || "Unknown",
-    evaluatorName: evaluatorName || "Unspecified",
+    evaluatorName: evaluatorName,
     fixtureId: activeFixtureId || null,
     matchDate: currentFixture.date || "",
     venue: currentFixture.venue || "",
@@ -1447,8 +1448,7 @@ function exportMatchExcel(e){
     ["Half Length (min)", e.halfLength||35], []
   ];
   const scoreRows = [
-    ["OVERALL PERFORMANCE SCORE"],
-    ["Overall Score", e.overall],
+    ["PERFORMANCE SCORES (by criteria)"],
     ...CRITERIA.map(c => [c.label, (e.scores && e.scores[c.key] != null) ? e.scores[c.key] : ""]),
     [],
     ["GENERAL NOTES"],
