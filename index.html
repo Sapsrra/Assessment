@@ -176,6 +176,10 @@
       <div id="activeMatchBanner" class="active-match none">
         No match selected. Go to <b>Schedule</b> and tap <b>Start Assessment</b> on a fixture.
       </div>
+      <div id="evaluatorNameRow" style="display:none;margin-top:10px;">
+        <label>Evaluator / Assessor Name</label>
+        <input type="text" id="evalEvaluatorInput" placeholder="Enter your name">
+      </div>
     </div>
 
     <div class="panel">
@@ -274,8 +278,8 @@
       </div>
       <label>Referee</label>
       <select id="fixRefSelect"></select>
-      <label>Evaluator / Assessor</label>
-      <input type="text" id="fixEvaluator" placeholder="Your name">
+      <label>Evaluator / Assessor (optional)</label>
+      <input type="text" id="fixEvaluator" placeholder="Leave blank if not yet known">
       <label>Half Length (minutes)</label>
       <input type="number" id="fixHalfLength" value="35" min="1">
       <div class="btnrow" style="margin-top:14px;">
@@ -335,11 +339,20 @@
   <section id="tab-dashboard" class="tab-content" style="display:none;">
     <div class="panel">
       <h2>Leaderboard</h2>
-      <div id="leaderboardList"><div class="empty">No assessments yet.</div></div>
+      <div class="row2">
+        <div><label>Tournament</label><select id="dashFilterTournament"><option value="">All</option></select></div>
+        <div><label>Province</label><select id="dashFilterProvince"><option value="">All</option></select></div>
+      </div>
+      <label>Grade</label>
+      <select id="dashFilterGrade"><option value="">All</option></select>
+      <div id="leaderboardList" style="margin-top:10px;"><div class="empty">No assessments yet.</div></div>
     </div>
     <div class="panel">
-      <h2>Recent Assessments</h2>
-      <div id="recentList"><div class="empty">No assessments yet.</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;">Recent Assessments</h2>
+        <button class="secondary small" id="clearRecentsBtn">Clear Recents</button>
+      </div>
+      <div id="recentList" style="margin-top:10px;"><div class="empty">No assessments yet.</div></div>
     </div>
   </section>
 
@@ -427,6 +440,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     document.getElementById("tab-" + btn.dataset.tab).style.display = "block";
     if (btn.dataset.tab === "referees") showRefereesList();
     if (btn.dataset.tab === "schedule") { renderFixtureGroups(); updateAssessorLink(); }
+    if (btn.dataset.tab === "dashboard") { refreshDashboardFilterSelects(); renderDashboard(); }
   });
 });
 
@@ -510,12 +524,14 @@ function updateOverallDisplay(){
 /* ===================== ACTIVE MATCH BANNER ===================== */
 function renderActiveMatchBanner(){
   const el = document.getElementById("activeMatchBanner");
+  const evalRow = document.getElementById("evaluatorNameRow");
   if (!currentFixture){
     el.className = "active-match none";
     el.innerHTML = isAssessorMode
       ? `No match selected. Pick one above to start.`
       : `No match selected. Go to <b>Schedule</b> and tap <b>Start Assessment</b> on a fixture.`;
     document.getElementById("assessorPickFixturePanel").style.display = isAssessorMode ? "block" : "none";
+    evalRow.style.display = "none";
     return;
   }
   document.getElementById("assessorPickFixturePanel").style.display = "none";
@@ -524,9 +540,16 @@ function renderActiveMatchBanner(){
   el.innerHTML = `
     <div class="am-teams">${esc(teamsLabel(f))}</div>
     <div class="am-meta">${f.date||""}${f.time?" · "+f.time:""} ${f.venue?"· "+esc(f.venue):""} ${f.competition?"· "+esc(f.competition):""}</div>
-    <div class="am-meta">Referee: ${esc(f.refereeName||"")} · Evaluator: ${esc(f.evaluatorName||"")} · Half length: ${f.halfLength||35} min</div>
+    <div class="am-meta">Referee: ${esc(f.refereeName||"")} · Half length: ${f.halfLength||35} min</div>
   `;
+  evalRow.style.display = "block";
+  document.getElementById("evalEvaluatorInput").value = f.evaluatorName || "";
 }
+document.getElementById("evalEvaluatorInput").addEventListener("change", () => {
+  const name = document.getElementById("evalEvaluatorInput").value.trim();
+  if (currentFixture) currentFixture.evaluatorName = name;
+  if (activeFixtureId) fixturesRef.child(activeFixtureId).update({evaluatorName: name});
+});
 
 /* ===================== LIVE MATCH STATE (Firebase-synced timer + timeline) ===================== */
 let liveMatchRef = null;
@@ -938,10 +961,11 @@ function refreshFixRefSelect(){
 document.getElementById("submitEvalBtn").addEventListener("click", () => {
   if (!currentFixture || !liveState){ showToast("No active match — start one from Schedule"); return; }
   const overall = computeOverall(currentScores);
+  const evaluatorName = document.getElementById("evalEvaluatorInput").value.trim();
   const entry = {
     refereeId: currentFixture.refereeId,
     refereeName: currentFixture.refereeName || "Unknown",
-    evaluatorName: currentFixture.evaluatorName || "",
+    evaluatorName: evaluatorName || "Unspecified",
     fixtureId: activeFixtureId || null,
     matchDate: currentFixture.date || "",
     venue: currentFixture.venue || "",
@@ -995,7 +1019,6 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
   if (!date){ showToast("Pick a date"); return; }
   if (!team1 || !team2){ showToast("Enter both team names"); return; }
   if (!refId){ showToast("Select a referee"); return; }
-  if (!evaluatorName){ showToast("Enter the evaluator's name"); return; }
   const fixtureData = {
     date, time: document.getElementById("fixTime").value || "",
     team1, team2, venue: document.getElementById("fixVenue").value.trim(),
@@ -1020,6 +1043,7 @@ document.getElementById("addFixtureBtn").addEventListener("click", () => {
 });
 
 function fixtureGroup(f){
+  if (f.archived) return "Archived";
   if (f.status === "completed") return "Past";
   if (f.status === "live") return "Live";
   const today = new Date().toISOString().slice(0,10);
@@ -1027,14 +1051,24 @@ function fixtureGroup(f){
   return "Upcoming";
 }
 
+function archiveFixture(fixId){
+  if (!confirm("Archive this game? It will move out of the active Schedule view but all data (referee history, exports) stays intact. You can unarchive it any time.")) return;
+  fixturesRef.child(fixId).update({archived: true});
+  showToast("Game archived");
+}
+function unarchiveFixture(fixId){
+  fixturesRef.child(fixId).update({archived: false});
+  showToast("Game restored from archive");
+}
+
 function renderFixtureGroups(){
   const wrap = document.getElementById("fixtureGroups");
   const list = Object.entries(fixtures).map(([id,f]) => ({id, ...f}));
-  const groups = {"Live":[], "Upcoming":[], "Past":[]};
+  const groups = {"Live":[], "Upcoming":[], "Past":[], "Archived":[]};
   list.forEach(f => groups[fixtureGroup(f)].push(f));
   Object.keys(groups).forEach(g => groups[g].sort((a,b) => (a.date+(a.time||"")).localeCompare(b.date+(b.time||""))));
   wrap.innerHTML = Object.entries(groups).map(([groupName, items]) => `
-    <details class="fixturegroup" ${groupName==="Past" ? "" : "open"}>
+    <details class="fixturegroup" ${groupName==="Past" || groupName==="Archived" ? "" : "open"}>
       <summary>${groupName} <span class="cnt">${items.length}</span></summary>
       <div class="fixture-list">
         ${items.length === 0 ? '<div class="empty">None</div>' : items.map(f => `
@@ -1044,8 +1078,11 @@ function renderFixtureGroups(){
             <div class="fline"><span>${esc(f.refereeName)} ${f.venue?"· "+esc(f.venue):""}</span></div>
             <div class="fline"><span>Evaluator: ${esc(f.evaluatorName||"")} · Half: ${f.halfLength||35} min</span></div>
             <div class="fixture-actions">
-              ${f.status !== "completed" ? `<button class="secondary small" onclick="startAssessmentFromFixture('${f.id}')">${f.status==="live"?"Continue Assessment":"Start Assessment"}</button>` : ""}
-              <button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>
+              ${(!f.archived && f.status !== "completed") ? `<button class="secondary small" onclick="startAssessmentFromFixture('${f.id}')">${f.status==="live"?"Continue Assessment":"Start Assessment"}</button>` : ""}
+              ${!f.archived ? `<button class="secondary small" onclick="editFixture('${f.id}')">Edit</button>` : ""}
+              ${f.archived
+                ? `<button class="secondary small" onclick="unarchiveFixture('${f.id}')">Unarchive</button>`
+                : `<button class="secondary small" onclick="archiveFixture('${f.id}')">Archive</button>`}
               <button class="secondary small danger" onclick="deleteFixture('${f.id}')">Delete</button>
             </div>
           </div>`).join("")}
@@ -1329,20 +1366,67 @@ function deleteEvaluation(evalId){
 }
 
 /* ===================== DASHBOARD ===================== */
+function refreshDashboardFilterSelects(){
+  const tournaments = new Set(), provinces = new Set(), grades = new Set();
+  Object.values(referees).forEach(r => {
+    if (r.tournament) tournaments.add(r.tournament);
+    if (r.province) provinces.add(r.province);
+    if (r.grade) grades.add(r.grade);
+  });
+  const fillSelect = (id, values) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">All</option>` + [...values].sort().map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    if ([...values].includes(cur)) sel.value = cur;
+  };
+  fillSelect("dashFilterTournament", tournaments);
+  fillSelect("dashFilterProvince", provinces);
+  fillSelect("dashFilterGrade", grades);
+}
+["dashFilterTournament","dashFilterProvince","dashFilterGrade"].forEach(id => {
+  document.getElementById(id).addEventListener("change", () => renderDashboard());
+});
+
+document.getElementById("clearRecentsBtn").addEventListener("click", () => {
+  if (!confirm("Clear the Recent Assessments list? This only hides older entries from this view on this device — nothing is deleted, and the Leaderboard and each referee's match history are unaffected.")) return;
+  localStorage.setItem("recentsClearedAt", String(Date.now()));
+  renderDashboard();
+  showToast("Recent Assessments cleared");
+});
+
+function matchesDashboardFilter(refId){
+  const r = referees[refId];
+  if (!r) return false;
+  const fT = document.getElementById("dashFilterTournament")?.value || "";
+  const fP = document.getElementById("dashFilterProvince")?.value || "";
+  const fG = document.getElementById("dashFilterGrade")?.value || "";
+  if (fT && r.tournament !== fT) return false;
+  if (fP && r.province !== fP) return false;
+  if (fG && r.grade !== fG) return false;
+  return true;
+}
+
 function renderDashboard(){
   const leaderboard = document.getElementById("leaderboardList");
   const recent = document.getElementById("recentList");
-  const ranked = Object.keys(referees).map(id => ({id, ref: referees[id], stats: refereeStats(id)}))
+  const ranked = Object.keys(referees).filter(matchesDashboardFilter)
+    .map(id => ({id, ref: referees[id], stats: refereeStats(id)}))
     .filter(r => r.stats.count > 0).sort((a,b) => b.stats.avg - a.stats.avg);
-  leaderboard.innerHTML = ranked.length === 0 ? `<div class="empty">No assessments yet.</div>` :
+  leaderboard.innerHTML = ranked.length === 0 ? `<div class="empty">No assessments match these filters.</div>` :
     ranked.map((r,i) => `
       <div class="leader-row">
         <div class="rank">${i+1}</div>
         <div class="info"><div class="name">${esc(r.ref.name)}</div><div class="sub">${r.stats.count} match${r.stats.count===1?"":"es"}</div></div>
         <div class="score-pill" style="color:${scoreColor(r.stats.avg)};">${r.stats.avg.toFixed(1)}</div>
       </div>`).join("");
-  const allEvals = Object.values(evaluations).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,15);
-  recent.innerHTML = allEvals.length === 0 ? `<div class="empty">No assessments yet.</div>` :
+
+  const clearedAt = Number(localStorage.getItem("recentsClearedAt") || 0);
+  const allEvals = Object.values(evaluations)
+    .filter(e => (e.timestamp||0) > clearedAt)
+    .filter(e => matchesDashboardFilter(e.refereeId))
+    .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,15);
+  recent.innerHTML = allEvals.length === 0 ? `<div class="empty">No recent assessments.</div>` :
     allEvals.map(e => `
       <div class="eval-item">
         <div class="eline"><span>${esc(e.refereeName)} ${e.matchDate?"· "+e.matchDate:""}</span>
@@ -1400,6 +1484,7 @@ refereesRef.on("value", snap => {
     refreshRefereeFilterSelects();
     renderRefereesList();
   }
+  refreshDashboardFilterSelects();
   renderDashboard();
 });
 evaluationsRef.on("value", snap => {
