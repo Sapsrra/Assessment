@@ -960,13 +960,12 @@ function refreshFixRefSelect(){
 /* ===================== SUBMIT ASSESSMENT ===================== */
 document.getElementById("submitEvalBtn").addEventListener("click", () => {
   if (!currentFixture || !liveState){ showToast("No active match — start one from Schedule"); return; }
-  const evaluatorName = document.getElementById("evalEvaluatorInput").value.trim();
-  if (!evaluatorName){ showToast("Enter the assessor's name before submitting"); document.getElementById("evalEvaluatorInput").focus(); return; }
   const overall = computeOverall(currentScores);
+  const evaluatorName = document.getElementById("evalEvaluatorInput").value.trim();
   const entry = {
     refereeId: currentFixture.refereeId,
     refereeName: currentFixture.refereeName || "Unknown",
-    evaluatorName: evaluatorName,
+    evaluatorName: evaluatorName || "Unspecified",
     fixtureId: activeFixtureId || null,
     matchDate: currentFixture.date || "",
     venue: currentFixture.venue || "",
@@ -1447,14 +1446,6 @@ function exportMatchExcel(e){
     ["Team 1", e.team1||""], ["Team 2", e.team2||""], ["Venue", e.venue||""],
     ["Half Length (min)", e.halfLength||35], []
   ];
-  const scoreRows = [
-    ["PERFORMANCE SCORES (by criteria)"],
-    ...CRITERIA.map(c => [c.label, (e.scores && e.scores[c.key] != null) ? e.scores[c.key] : ""]),
-    [],
-    ["GENERAL NOTES"],
-    [e.generalNotes || ""],
-    []
-  ];
   const summaryRows = [
     ["Total Scrums", s.totalScrums, "Total Scrum Resets", s.totalScrumResets, "Total Penalties", s.totalPenalties],
     ["Total Free Kicks", s.totalFreeKicks, "Total Line-outs", s.totalLineouts, "Total Advantages", s.totalAdvantages],
@@ -1463,7 +1454,7 @@ function exportMatchExcel(e){
   ];
   const notationHeader = ["Half","Time","Type","Reason","Team","Reset?","Error","ND","HID","Comment"];
   const notationRows = (e.events||[]).map(ev => [ev.half, formatTime(ev.time), ev.type, ev.reason||"", ev.team, ev.reset?"Y":"", ev.error?"Y":"", ev.nd?"Y":"", ev.hid?"Y":"", ev.comment]);
-  const sheetData = [...infoRows, ...scoreRows, ...summaryRows, ["EVENT TIMELINE"], notationHeader, ...notationRows];
+  const sheetData = [...infoRows, ...summaryRows, ["EVENT TIMELINE"], notationHeader, ...notationRows];
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
   ws["!cols"] = [{wch:8},{wch:10},{wch:12},{wch:20},{wch:10},{wch:8},{wch:8},{wch:6},{wch:6},{wch:30}];
   XLSX.utils.book_append_sheet(wb, ws, "Assessment");
