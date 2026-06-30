@@ -105,6 +105,11 @@
   .event-btn.scrum{border-color:#3a6ea5;color:#5b9bd5;}
   .event-btn.lineout{border-color:var(--accent-2);color:var(--accent-2);}
   .event-btn.advantage{border-color:#9b59b6;color:#c39bd3;}
+  .event-btn.nd{border-color:#e67e22;color:#f0a868;}
+  .nd-picker{background:var(--bg);border:1px solid #e67e22;border-radius:10px;padding:12px;margin-top:10px;}
+  .nd-picker-title{font-size:.78rem;font-weight:700;color:#f0a868;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;text-align:center;}
+  .nd-step-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .nd-step-grid button{padding:14px 8px;border-radius:10px;font-weight:700;font-size:.86rem;cursor:pointer;min-height:48px;touch-action:manipulation;border:2px solid #e67e22;background:var(--panel-2);color:var(--text);}
   .reason-picker{background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:12px;margin-top:10px;}
   .reason-picker-title{font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;text-align:center;}
   .reason-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
@@ -208,7 +213,14 @@
         <button class="event-btn freekick" id="btnFreeKick" disabled>Free Kick</button>
         <button class="event-btn scrum" id="btnScrum" disabled>Scrum</button>
         <button class="event-btn lineout" id="btnLineout" disabled>Line-out</button>
-        <button class="event-btn advantage" id="btnAdvantage" disabled style="grid-column:1/-1;">Advantage</button>
+        <button class="event-btn advantage" id="btnAdvantage" disabled>Advantage</button>
+        <button class="event-btn nd" id="btnND" disabled>ND</button>
+      </div>
+
+      <div class="nd-picker" id="ndPicker" style="display:none;">
+        <div class="nd-picker-title" id="ndPickerTitle">ND — Which team?</div>
+        <div id="ndStepContainer"></div>
+        <button class="secondary small" id="ndCancelBtn" style="width:100%;margin-top:6px;">Cancel</button>
       </div>
 
       <div class="team-picker" id="teamPicker" style="display:none;">
@@ -233,6 +245,12 @@
         <div class="reason-picker-title" id="reasonPickerTitle">Reason</div>
         <div id="reasonTeamContainer"></div>
         <div class="reason-grid" id="reasonGrid"></div>
+        <div id="reasonConfirmStep" style="display:none;margin-top:10px;">
+          <label class="tchk" style="justify-content:center;gap:6px;margin-bottom:10px;font-size:.8rem;">
+            <input type="checkbox" id="reasonManagedChk" style="width:18px;height:18px;"> Manage
+          </label>
+          <button class="primary" id="reasonConfirmBtn" style="margin-bottom:8px;">Log Event</button>
+        </div>
         <button class="secondary small" id="reasonCancelBtn" style="width:100%;margin-top:6px;">Cancel</button>
       </div>
 
@@ -413,7 +431,7 @@ const CRITERIA = [
   {key:"spaceOffside",    label:"Space & Offside",              desc:"Management of offside lines and use of space"}
 ];
 
-const PENALTY_REASONS = ["Offside","Not Rolling Away","Dangerous Tackle","Holding","Foul Play","Obstruction","IFOK (Infront of Kicker)","Ruck Infringement","Scrum Infringement","Lineout Infringement","Technical","Other"];
+const PENALTY_REASONS = ["Offside","Dangerous Tackle","Not Rolling Away","T/A Release","Holding","Side Entry","Obstruction","Foul Play","IFOK (Infront of Kicker)","Tackle Infringement","Ruck Infringement","Scrum Infringement","Lineout Infringement","Other"];
 const FREEKICK_REASONS = ["Scrum Infringement","Lineout Infringement","Mark","Quick Throw-in Error","Other"];
 
 let referees = {};
@@ -650,6 +668,7 @@ function renderLiveMatch(){
       document.getElementById("reasonPicker").style.display = "none";
       document.getElementById("advantagePicker").style.display = "none";
       document.getElementById("teamPicker").style.display = "none";
+      document.getElementById("ndPicker").style.display = "none";
       renderFinalStats();
       document.getElementById("postGamePanel").style.display = "block";
       document.getElementById("postGamePanel").scrollIntoView({behavior:"smooth"});
@@ -695,7 +714,7 @@ document.getElementById("endGameBtn").addEventListener("click", () => {
 });
 
 function setEventButtonsEnabled(on){
-  ["btnPenalty","btnFreeKick","btnScrum","btnLineout","btnAdvantage"].forEach(id =>
+  ["btnPenalty","btnFreeKick","btnScrum","btnLineout","btnAdvantage","btnND"].forEach(id =>
     document.getElementById(id).disabled = !on || (liveState && liveState.matchEnded)
   );
 }
@@ -704,27 +723,32 @@ function setEventButtonsEnabled(on){
 document.getElementById("btnPenalty").addEventListener("click", () => {
   document.getElementById("advantagePicker").style.display = "none";
   document.getElementById("teamPicker").style.display = "none";
+  document.getElementById("ndPicker").style.display = "none";
   openReasonPicker("Penalty");
 });
 document.getElementById("btnFreeKick").addEventListener("click", () => {
   document.getElementById("advantagePicker").style.display = "none";
   document.getElementById("teamPicker").style.display = "none";
+  document.getElementById("ndPicker").style.display = "none";
   openReasonPicker("Free Kick");
 });
 document.getElementById("btnScrum").addEventListener("click", () => {
   document.getElementById("reasonPicker").style.display = "none";
   document.getElementById("advantagePicker").style.display = "none";
+  document.getElementById("ndPicker").style.display = "none";
   openTeamPicker("Scrum", "Which team throws in (put-in)?");
 });
 document.getElementById("btnLineout").addEventListener("click", () => {
   document.getElementById("reasonPicker").style.display = "none";
   document.getElementById("advantagePicker").style.display = "none";
+  document.getElementById("ndPicker").style.display = "none";
   openTeamPicker("Line-out", "Which team throws in?");
 });
 
 document.getElementById("btnAdvantage").addEventListener("click", () => {
   document.getElementById("reasonPicker").style.display = "none";
   document.getElementById("teamPicker").style.display = "none";
+  document.getElementById("ndPicker").style.display = "none";
   selectedReasonTeam = "";
   document.getElementById("advantagePicker").style.display = "block";
   document.getElementById("advantagePicker").scrollIntoView({behavior:"smooth", block:"nearest"});
@@ -761,13 +785,92 @@ document.getElementById("teamPickerCancelBtn").addEventListener("click", () => {
   document.getElementById("teamPicker").style.display = "none";
 });
 
+/* ===================== ND: TEAM -> TYPE -> (REASON) ===================== */
+document.getElementById("btnND").addEventListener("click", () => {
+  document.getElementById("reasonPicker").style.display = "none";
+  document.getElementById("advantagePicker").style.display = "none";
+  document.getElementById("teamPicker").style.display = "none";
+  openNDPicker();
+});
+document.getElementById("ndCancelBtn").addEventListener("click", () => {
+  document.getElementById("ndPicker").style.display = "none";
+});
+
+let ndState = {team:"", ndType:""};
+
+function openNDPicker(){
+  ndState = {team:"", ndType:""};
+  document.getElementById("ndPickerTitle").textContent = "ND — Which team?";
+  const t1 = currentFixture?.team1 || "Team 1";
+  const t2 = currentFixture?.team2 || "Team 2";
+  const container = document.getElementById("ndStepContainer");
+  container.innerHTML = `
+    <div class="nd-step-grid">
+      <button type="button" id="ndTeamBtn1">${esc(t1)}</button>
+      <button type="button" id="ndTeamBtn2">${esc(t2)}</button>
+    </div>
+  `;
+  document.getElementById("ndTeamBtn1").addEventListener("click", () => { ndState.team = t1; openNDTypeStep(); });
+  document.getElementById("ndTeamBtn2").addEventListener("click", () => { ndState.team = t2; openNDTypeStep(); });
+  document.getElementById("ndPicker").style.display = "block";
+  document.getElementById("ndPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function openNDTypeStep(){
+  document.getElementById("ndPickerTitle").textContent = `ND against ${esc(ndState.team)} — Type?`;
+  const container = document.getElementById("ndStepContainer");
+  container.innerHTML = `
+    <div class="nd-step-grid">
+      <button type="button" id="ndTypeScrum">Scrum</button>
+      <button type="button" id="ndTypePenalty">Penalty</button>
+      <button type="button" id="ndTypeFreeKick" style="grid-column:1/-1;">Free Kick</button>
+    </div>
+  `;
+  document.getElementById("ndTypeScrum").addEventListener("click", () => {
+    ndState.ndType = "Scrum";
+    logEvent("ND", "", ndState.team, "Scrum");
+    document.getElementById("ndPicker").style.display = "none";
+  });
+  document.getElementById("ndTypePenalty").addEventListener("click", () => {
+    ndState.ndType = "Penalty";
+    openNDReasonStep(PENALTY_REASONS);
+  });
+  document.getElementById("ndTypeFreeKick").addEventListener("click", () => {
+    ndState.ndType = "Free Kick";
+    openNDReasonStep(FREEKICK_REASONS);
+  });
+}
+
+function openNDReasonStep(reasons){
+  document.getElementById("ndPickerTitle").textContent = `ND against ${esc(ndState.team)} — ${esc(ndState.ndType)} Reason`;
+  const container = document.getElementById("ndStepContainer");
+  container.innerHTML = `<div class="reason-grid" id="ndReasonGrid"></div>`;
+  const grid = document.getElementById("ndReasonGrid");
+  reasons.forEach(r => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = r;
+    btn.addEventListener("click", () => {
+      logEvent("ND", r, ndState.team, ndState.ndType);
+      document.getElementById("ndPicker").style.display = "none";
+    });
+    grid.appendChild(btn);
+  });
+}
+
+
 /* ===================== PENALTY / FREE KICK PICKER ===================== */
+let pendingReasonEvent = null; // {type, reason}
+
 function openReasonPicker(type){
   const reasons = type === "Penalty" ? PENALTY_REASONS : FREEKICK_REASONS;
   document.getElementById("reasonPickerTitle").textContent = `${type} — Select Team & Reason`;
   const t1 = currentFixture?.team1 || "Team 1";
   const t2 = currentFixture?.team2 || "Team 2";
   selectedReasonTeam = "";
+  pendingReasonEvent = null;
+  document.getElementById("reasonManagedChk").checked = false;
+  document.getElementById("reasonConfirmStep").style.display = "none";
 
   const teamContainer = document.getElementById("reasonTeamContainer");
   teamContainer.innerHTML = `
@@ -792,7 +895,14 @@ function openReasonPicker(type){
     btn.textContent = r;
     btn.addEventListener("click", () => {
       if (!selectedReasonTeam){ showToast("Please select the offending team first!"); return; }
-      logEvent(type, r);
+      pendingReasonEvent = {type, reason: r};
+      grid.querySelectorAll("button").forEach(b => {
+        b.style.borderColor = "var(--border)"; b.style.background = "var(--panel-2)"; b.style.color = "var(--text)";
+      });
+      btn.style.borderColor = "var(--accent)"; btn.style.background = "var(--panel)"; btn.style.color = "var(--accent)";
+      document.getElementById("reasonManagedChk").checked = false;
+      document.getElementById("reasonConfirmStep").style.display = "block";
+      document.getElementById("reasonConfirmStep").scrollIntoView({behavior:"smooth", block:"nearest"});
     });
     grid.appendChild(btn);
   });
@@ -800,6 +910,12 @@ function openReasonPicker(type){
   document.getElementById("reasonPicker").style.display = "block";
   document.getElementById("reasonPicker").scrollIntoView({behavior:"smooth", block:"nearest"});
 }
+
+document.getElementById("reasonConfirmBtn").addEventListener("click", () => {
+  if (!pendingReasonEvent){ showToast("Select a reason first"); return; }
+  const managed = document.getElementById("reasonManagedChk").checked;
+  logEvent(pendingReasonEvent.type, pendingReasonEvent.reason, null, null, managed);
+});
 
 function selectPickerTeam(teamName, activeBtn, inactiveBtn){
   selectedReasonTeam = teamName;
@@ -813,19 +929,26 @@ function selectPickerTeam(teamName, activeBtn, inactiveBtn){
 
 document.getElementById("reasonCancelBtn").addEventListener("click", () => {
   selectedReasonTeam = "";
+  pendingReasonEvent = null;
+  document.getElementById("reasonManagedChk").checked = false;
+  document.getElementById("reasonConfirmStep").style.display = "none";
   document.getElementById("reasonPicker").style.display = "none";
 });
 
-function logEvent(type, reason, team){
+function logEvent(type, reason, team, ndType, managed){
   if (!liveMatchRef || !liveState) return;
   const secs = computeDisplaySeconds(liveState);
   const newRef = liveMatchRef.child("events").push();
   newRef.set({
     half: liveState.half, time: secs, type, reason: reason || "",
-    team: team || selectedReasonTeam || "", reset:false, error:false, nd:false, hid:false, comment:"",
+    ndType: ndType || "", managed: !!managed,
+    team: team || selectedReasonTeam || "", reset:false, error:false, hid:false, comment:"",
     createdAt: firebase.database.ServerValue.TIMESTAMP
   });
   selectedReasonTeam = "";
+  pendingReasonEvent = null;
+  document.getElementById("reasonManagedChk").checked = false;
+  document.getElementById("reasonConfirmStep").style.display = "none";
   document.getElementById("reasonPicker").style.display = "none";
 }
 
@@ -853,10 +976,12 @@ function renderTimeline(){
   }
   const t1 = currentFixture?.team1 || "Team 1";
   const t2 = currentFixture?.team2 || "Team 2";
-  list.innerHTML = [...evs].reverse().map(ev => `
+  list.innerHTML = [...evs].reverse().map(ev => {
+    const ndLabel = ev.type === "ND" ? `${ev.ndType||""}${ev.reason ? " · "+ev.reason : ""}` : "";
+    return `
     <div class="timeline-item">
       <div class="timeline-top">
-        <span class="ttype">${esc(ev.type)}${ev.reason ? ` · ${esc(ev.reason)}` : ""}</span>
+        <span class="ttype">${esc(ev.type)}${ev.type==="ND" ? (ndLabel?` · ${esc(ndLabel)}`:"") : (ev.reason ? ` · ${esc(ev.reason)}` : "")}</span>
         <span class="ttime">Half ${ev.half} · ${formatTime(ev.time)}</span>
         <span class="rm-x" style="color:var(--danger);cursor:pointer;font-weight:700;" onclick="removeEvent('${ev.key}')">&times;</span>
       </div>
@@ -876,13 +1001,13 @@ function renderTimeline(){
           <option value="${esc(t2)}" ${ev.team===t2?"selected":""}>${esc(t2)}</option>
         </select>
         ${ev.type==="Scrum" ? `<label class="tchk"><input type="checkbox" ${ev.reset?"checked":""} onchange="updateEventField('${ev.key}','reset',this.checked)"> Reset</label>` : ""}
+        ${(ev.type==="Penalty"||ev.type==="Free Kick") ? `<label class="tchk"><input type="checkbox" ${ev.managed?"checked":""} onchange="updateEventField('${ev.key}','managed',this.checked)"> Manage</label>` : ""}
         <label class="tchk"><input type="checkbox" ${ev.error?"checked":""} onchange="updateEventField('${ev.key}','error',this.checked)"> Error</label>
-        <label class="tchk"><input type="checkbox" ${ev.nd?"checked":""} onchange="updateEventField('${ev.key}','nd',this.checked)"> ND</label>
         <label class="tchk"><input type="checkbox" ${ev.hid?"checked":""} onchange="updateEventField('${ev.key}','hid',this.checked)"> HID</label>
         <input type="text" placeholder="Comment" value="${esc(ev.comment)}" onchange="updateEventField('${ev.key}','comment',this.value)">
       </div>
     </div>
-  `).join("");
+  `;}).join("");
 }
 
 function matchNotationStats(events){
@@ -895,10 +1020,15 @@ function matchNotationStats(events){
   const totalAdvPlayedOut = events.filter(e => e.type === "Advantage" && e.reason === "Played Out").length;
   const totalAdvNotPlayed = events.filter(e => e.type === "Advantage" && e.reason === "Did Not Play Out").length;
   const totalErrors = events.filter(e => e.error).length;
-  const totalNDs = events.filter(e => e.nd).length;
+  const totalNDs = events.filter(e => e.type === "ND").length;
+  const totalNDScrum = events.filter(e => e.type === "ND" && e.ndType === "Scrum").length;
+  const totalNDPenalty = events.filter(e => e.type === "ND" && e.ndType === "Penalty").length;
+  const totalNDFreeKick = events.filter(e => e.type === "ND" && e.ndType === "Free Kick").length;
   const totalHIDs = events.filter(e => e.hid).length;
+  const totalManaged = events.filter(e => e.managed).length;
   return {totalScrums, totalScrumResets, totalPenalties, totalFreeKicks, totalLineouts,
-          totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors, totalNDs, totalHIDs};
+          totalAdvantages, totalAdvPlayedOut, totalAdvNotPlayed, totalErrors,
+          totalNDs, totalNDScrum, totalNDPenalty, totalNDFreeKick, totalHIDs, totalManaged};
 }
 
 function renderLiveCounters(){
@@ -942,6 +1072,7 @@ function resetTimerState(){
   document.getElementById("reasonPicker").style.display = "none";
   document.getElementById("advantagePicker").style.display = "none";
   document.getElementById("teamPicker").style.display = "none";
+  document.getElementById("ndPicker").style.display = "none";
   setEventButtonsEnabled(false);
   document.getElementById("timerDisplay").textContent = "00:00";
   document.getElementById("timerDisplay").classList.remove("over");
@@ -1447,10 +1578,7 @@ function exportMatchExcel(e){
     ["Team 1", e.team1||""], ["Team 2", e.team2||""], ["Venue", e.venue||""],
     ["Half Length (min)", e.halfLength||35], []
   ];
-  const scoreRows = [
-    ["PERFORMANCE SCORES (by criteria)"],
-    ...CRITERIA.map(c => [c.label, (e.scores && e.scores[c.key] != null) ? e.scores[c.key] : ""]),
-    [],
+  const notesRows = [
     ["GENERAL NOTES"],
     [e.generalNotes || ""],
     []
@@ -1458,14 +1586,18 @@ function exportMatchExcel(e){
   const summaryRows = [
     ["Total Scrums", s.totalScrums, "Total Scrum Resets", s.totalScrumResets, "Total Penalties", s.totalPenalties],
     ["Total Free Kicks", s.totalFreeKicks, "Total Line-outs", s.totalLineouts, "Total Advantages", s.totalAdvantages],
-    ["Advantages Played Out", s.totalAdvPlayedOut, "Advantages Not Played", s.totalAdvNotPlayed, "", ""],
-    ["Total Errors", s.totalErrors, "Total ND's", s.totalNDs, "Total HID's / CI's", s.totalHIDs], []
+    ["Advantages Played Out", s.totalAdvPlayedOut, "Advantages Not Played", s.totalAdvNotPlayed, "Total ND's", s.totalNDs],
+    ["Total Errors", s.totalErrors, "Total HID's / CI's", s.totalHIDs, "", ""], []
   ];
-  const notationHeader = ["Half","Time","Type","Reason","Team","Reset?","Error","ND","HID","Comment"];
-  const notationRows = (e.events||[]).map(ev => [ev.half, formatTime(ev.time), ev.type, ev.reason||"", ev.team, ev.reset?"Y":"", ev.error?"Y":"", ev.nd?"Y":"", ev.hid?"Y":"", ev.comment]);
-  const sheetData = [...infoRows, ...scoreRows, ...summaryRows, ["EVENT TIMELINE"], notationHeader, ...notationRows];
+  const notationHeader = ["Half","Time","Type","Reason","Team","Reset?","Manage?","Error","ND Type","HID","Comment"];
+  const notationRows = (e.events||[]).map(ev => [
+    ev.half, formatTime(ev.time), ev.type, ev.reason||"", ev.team,
+    ev.reset?"Y":"", ev.managed?"X":"", ev.error?"Y":"",
+    ev.type==="ND" ? (ev.ndType||"") : "", ev.hid?"Y":"", ev.comment
+  ]);
+  const sheetData = [...infoRows, ...notesRows, ...summaryRows, ["EVENT TIMELINE"], notationHeader, ...notationRows];
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
-  ws["!cols"] = [{wch:8},{wch:10},{wch:12},{wch:20},{wch:10},{wch:8},{wch:8},{wch:6},{wch:6},{wch:30}];
+  ws["!cols"] = [{wch:8},{wch:10},{wch:12},{wch:20},{wch:10},{wch:8},{wch:9},{wch:8},{wch:10},{wch:6},{wch:30}];
   XLSX.utils.book_append_sheet(wb, ws, "Assessment");
   const fname = `${(e.refereeName||"referee").replace(/\s+/g,"_")}_${e.matchDate||"match"}_datasheet.xlsx`;
   XLSX.writeFile(wb, fname);
