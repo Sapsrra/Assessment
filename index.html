@@ -1474,12 +1474,16 @@ function showMatchDetail(evalId){
       <div class="sbox"><div class="sval">${stats.totalNDs}</div><div class="slabel">ND's</div></div>
       <div class="sbox"><div class="sval">${stats.totalHIDs}</div><div class="slabel">HID's / CI's</div></div>
     </div>
-    ${e.generalNotes?`<h3>General Notes</h3><div style="font-size:.85rem;">${esc(e.generalNotes)}</div>`:""}
+    ${`<h3>General Notes</h3><textarea id="editGeneralNotes" style="width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:9px;font-size:1rem;resize:vertical;min-height:80px;">${esc(e.generalNotes||"")}</textarea><button class="secondary small" id="saveNotesBtn" style="margin-top:6px;width:100%;">Save Notes</button>`}
     <button class="primary" id="exportXlsxBtn" style="margin-top:14px;">Export Match Datasheet (Excel)</button>
     <button class="secondary danger" id="deleteEvalBtn" style="margin-top:8px;width:100%;">Delete Match</button>`;
   panel.replaceWith(wrap);
   wrap.id = "profilePanel";
   document.getElementById("backFromMatch").addEventListener("click", () => showRefereeProfile(e.refereeId));
+  document.getElementById("saveNotesBtn").addEventListener("click", () => {
+    const notes = document.getElementById("editGeneralNotes").value.trim();
+    evaluationsRef.child(evalId).update({generalNotes: notes}).then(() => showToast("Notes saved"));
+  });
   document.getElementById("exportXlsxBtn").addEventListener("click", () => exportMatchExcel(e));
   document.getElementById("deleteEvalBtn").addEventListener("click", () => deleteEvaluation(evalId));
 }
